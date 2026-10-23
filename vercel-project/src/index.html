@@ -1,0 +1,2571 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0866FF">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>MIR Digital Store</title>
+    
+    <link id="app-favicon" rel="icon" type="image/png" href="https://drive.google.com/thumbnail?id=1N7LWXkb3k4VxABCvAjj2GoCiwbM5ovQO&sz=w192">
+    <link id="app-apple-icon" rel="apple-touch-icon" href="https://drive.google.com/thumbnail?id=1N7LWXkb3k4VxABCvAjj2GoCiwbM5ovQO&sz=w512">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        window.appStartTime = Date.now();
+
+        const DEFAULT_APP_ICON = "https://drive.google.com/thumbnail?id=1N7LWXkb3k4VxABCvAjj2GoCiwbM5ovQO&sz=w512";
+
+        const CONFIG = {
+            // Permintaan diteruskan oleh Vercel Function; URL Apps Script disimpan di Environment Variables Vercel.
+            API_URL: "/api/gas",
+            SYNC_INTERVAL: 45000
+        };
+
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { 
+                extend: { 
+                    colors: { 
+                        primary: '#0866FF',
+                        gray: { 700: '#3f3f46', 800: '#27272a', 900: '#18181b' }
+                    },
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] } 
+                } 
+            }
+        };
+    </script>
+
+    <style>
+        :root { --bg: #f4f7fb; --surface: #ffffff; --text: #0f172a; --muted: #64748b; --border: #e2e8f0; --primary: #0866ff; }
+        .dark { --bg: #121212; --surface: #1e1e1e; --text: #f8fafc; --muted: #a1a1aa; --border: #2e2e2e; --primary: #3b82f6; }
+
+        html { background-color: var(--bg); transition: background-color 0.35s ease; scroll-behavior: smooth; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; padding: 0; background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent; transition: background-color 0.35s ease, color 0.35s ease; min-height: 100vh; position: relative; }
+        
+        /* Tekstur Halus Mode Terang & Gelap */
+        body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"); opacity: 0.045; }
+        html.dark body::before { opacity: 0.035; }
+        
+        .header-glass { background-color: rgba(255, 255, 255, 0.85); background-color: color-mix(in srgb, var(--surface) 85%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); transition: background-color 0.35s ease, border-color 0.35s ease; }
+        .surface-el { background-color: var(--surface); border-color: var(--border); transition: background-color 0.35s ease, border-color 0.35s ease; }
+        .text-main { color: var(--text); transition: color 0.35s ease; } 
+        .text-mute { color: var(--muted); transition: color 0.35s ease; }
+
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+
+        @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+        @keyframes fadeUp { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }
+        @keyframes blurIn { 0% { opacity: 0; filter: blur(10px); transform: scale(1.08); } 100% { opacity: 1; filter: blur(0); transform: scale(1); } }
+        @keyframes popIn { 0% { opacity: 0; transform: scale(0.96) translateY(8px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes shine { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+        .animate-fade-in { animation: fadeIn 0.25s ease forwards; }
+        .animate-fade-up { animation: fadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-blur-in { animation: blurIn 1s cubic-bezier(0.25, 1, 0.5, 1) forwards; opacity: 0; }
+        .animate-pop-in { animation: popIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; will-change: transform, opacity; }
+
+        .skeleton-box { position: relative; overflow: hidden; background-color: var(--border); }
+        .skeleton-box::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent); animation: shine 1s ease-in-out infinite; }
+        .dark .skeleton-box::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent); }
+
+        .hover-card-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .hover-card-lift:hover { transform: translateY(-2px); box-shadow: 0 10px 20px -10px rgba(0,0,0,0.08); }
+        .dark .hover-card-lift:hover { box-shadow: 0 10px 20px -10px rgba(0,0,0,0.45); }
+
+        .carousel-snap { scroll-snap-type: x mandatory; scroll-behavior: smooth; }
+        .carousel-item { scroll-snap-align: center; }
+
+        /* Proteksi Gambar: Tidak bisa didownload, drag, atau ditekan lama */
+        img {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        #notify-wrap { position: fixed; top: 16px; right: 16px; z-index: 2147483647; display: flex; flex-direction: column; gap: 8px; pointer-events: none; max-width: calc(100vw - 32px); }
+        .notify { padding: 9px 16px; border-radius: 9999px; font-size: 12px; font-weight: 600; color: white; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); transform: translateX(120%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: auto; }
+        .notify.show { transform: translateX(0); } .n-success { background: #10B981; } .n-error { background: #EF4444; } .n-info { background: #0866FF; }
+
+        .zoom-img-transition { transition: transform 0.2s cubic-bezier(0.2, 0, 0.2, 1); transform-origin: center center; }
+    </style>
+</head>
+<body class="antialiased overflow-x-hidden" id="app-root">
+
+    <div id="splash-screen" class="fixed inset-0 z-[99999] flex items-center justify-center bg-white dark:bg-[#121212] transition-opacity duration-500 pointer-events-none">
+        <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white flex gap-2 sm:gap-3 tracking-tight">
+            <span class="animate-blur-in" style="animation-delay: 0ms">MIR</span>
+            <span class="animate-blur-in text-primary" style="animation-delay: 350ms">DIGITAL</span>
+            <span class="animate-blur-in" style="animation-delay: 700ms">STORE</span>
+        </h2>
+    </div>
+
+    <div id="notify-wrap"></div>
+    <div id="router-view" class="flex flex-col min-h-screen w-full"></div>
+
+    <template id="tpl-public">
+        <header class="header-glass sticky top-0 z-40">
+            <div class="max-w-4xl mx-auto px-4 py-2.5 sm:py-3 flex items-center justify-between">
+                <a href="/" onclick="event.preventDefault(); Router.navigate('/');" class="flex items-center gap-2.5 group min-w-0 max-w-[65%] sm:max-w-none">
+                    <img id="pub-logo" src="" alt="Logo" class="h-8 w-8 sm:h-9 sm:w-9 object-contain shrink-0 hidden rounded-lg">
+                    <div class="flex flex-col justify-center min-w-0">
+                        <span class="font-extrabold text-[15px] sm:text-[16px] text-primary leading-tight tracking-tight truncate" id="pub-name">MIR Digital Store</span>
+                        <span class="text-[10px] sm:text-[11px] font-medium text-mute truncate" id="pub-tagline"></span>
+                    </div>
+                </a>
+                <div class="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-2">
+                    <button onclick="Theme.toggle()" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-mute" title="Ganti Tema">
+                        <i class="ph ph-sun text-[19px] hidden dark:block text-yellow-400"></i>
+                        <i class="ph ph-moon text-[19px] block dark:hidden"></i>
+                    </button>
+                    <a href="/admin/dashboard" onclick="event.preventDefault(); PublicUI.checkAuthNav();" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-mute hover:text-primary relative flex items-center" title="Panel Admin">
+                        <i class="ph ph-squares-four text-[19px] hidden" id="nav-dash-icon"></i>
+                        <i class="ph ph-user text-[19px]" id="nav-user-icon"></i>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-grow w-full max-w-4xl mx-auto pb-12">
+            <!-- Search Bar -->
+            <div class="px-4 pt-4 pb-3.5 w-full mx-auto relative z-30" id="searchWrap">
+                <div class="relative group">
+                    <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-[18px] text-gray-400 group-focus-within:text-primary transition-colors z-10"></i>
+                    <input type="text" id="searchInput" placeholder="Cari produk digital..." class="w-full pl-11 pr-10 py-2.5 sm:py-3 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:border-primary text-[13px] shadow-[0_6px_16px_-10px_rgba(0,0,0,0.08)] dark:shadow-none transition-all" autocomplete="off" oninput="PublicUI.handleSearch(this.value)">
+                    <button id="searchClearBtn" onclick="PublicUI.clearSearch()" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden p-1 bg-gray-100 dark:bg-gray-800 rounded-full z-10 transition-colors">
+                        <i class="ph ph-x text-[12px]"></i>
+                    </button>
+                </div>
+                
+                <div id="searchDropdown" class="absolute top-[calc(100%-4px)] left-4 right-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[20px] shadow-2xl hidden flex-col overflow-hidden max-h-[65vh] animate-fade-up z-50">
+                    <div class="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 flex justify-between items-center shrink-0">
+                        <div class="flex items-center gap-1.5 text-primary font-bold text-[10px] tracking-wider uppercase"><i class="ph ph-sparkle text-[13px]"></i> Hasil Pencarian</div>
+                        <span id="searchCount" class="text-[10px] text-mute font-semibold">0 produk</span>
+                    </div>
+                    <div id="searchList" class="overflow-y-auto hide-scrollbar flex-1 flex flex-col divide-y divide-gray-100 dark:divide-gray-800/50"></div>
+                    <button onclick="PublicUI.applySearch()" class="p-3 text-center text-primary font-semibold text-[12px] hover:bg-primary/5 transition-colors border-t border-gray-100 dark:border-gray-800 flex items-center justify-center gap-1.5 shrink-0 bg-gray-50 dark:bg-gray-900">
+                        Lihat semua hasil untuk "<span id="searchKeyword" class="italic truncate max-w-[140px]"></span>" <i class="ph ph-arrow-right text-[14px]"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Banners -->
+            <div class="px-4 mb-4 w-full mx-auto hidden relative group" id="bannerWrapper">
+                <div id="bannerContainer" class="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-3 carousel-snap"></div>
+                <div class="absolute bottom-2.5 left-0 right-0 flex justify-center pointer-events-none">
+                    <div id="bannerDots" class="flex gap-1.5 bg-black/25 dark:bg-black/45 px-2.5 py-1 rounded-full backdrop-blur-md pointer-events-auto"></div>
+                </div>
+            </div>
+
+            <!-- Card 4 Tombol di Bawah Banner -->
+            <div class="px-4 mb-5 w-full mx-auto hidden" id="quickMenuCardWrap">
+                <div class="surface-el border border-gray-100 dark:border-gray-800 rounded-[20px] p-3 sm:p-3.5 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.06)] dark:shadow-none">
+                    <div class="grid grid-cols-4 gap-2 sm:gap-3" id="quickMenuGrid"></div>
+                </div>
+            </div>
+
+            <!-- Kapsul Tab Kategori (Ukuran Kecil / Compact) -->
+            <div class="px-4 w-full mx-auto mb-5 hidden" id="catWrap">
+                <div class="flex overflow-x-auto hide-scrollbar gap-1.5 pb-1" id="categoryContainer"></div>
+            </div>
+
+            <!-- Produk Terlaris (Maksimal 5, Tanpa Lihat Semua) -->
+            <div class="px-4 w-full mx-auto mb-7 hidden" id="popularSection">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-[15px] sm:text-[16px] font-extrabold text-main flex items-center gap-2">
+                        Produk Terlaris <div class="w-2.5 h-1 bg-primary/30 rounded-full"></div>
+                    </h2>
+                </div>
+                <div id="popularGrid" class="flex overflow-x-auto snap-x hide-scrollbar gap-3 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0"></div>
+            </div>
+
+            <!-- Main Catalog -->
+            <div class="px-4 w-full mx-auto" id="productSection">
+                <div class="flex items-center justify-between mb-3.5">
+                    <h2 id="sectionTitle" class="text-[15px] sm:text-[16px] font-extrabold text-main flex items-center gap-2">
+                        Katalog Produk <div class="w-2.5 h-1 bg-primary/30 rounded-full"></div>
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-see-all-cat" onclick="PublicUI.openCategoryPage(PublicUI.cat)" class="text-[11px] font-bold text-primary hover:underline flex items-center gap-0.5 hidden">
+                            Lihat Semua <i class="ph ph-caret-right text-[12px]"></i>
+                        </button>
+                        <div class="flex gap-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-0.5 rounded-lg shadow-sm">
+                            <button onclick="PublicUI.toggleView('grid')" id="btn-view-grid" class="p-1.5 rounded-md text-mute transition-colors focus:outline-none" title="Tampilan Kotak">
+                                <i class="ph ph-squares-four text-[15px]"></i>
+                            </button>
+                            <button onclick="PublicUI.toggleView('list')" id="btn-view-list" class="p-1.5 rounded-md text-mute transition-colors focus:outline-none" title="Tampilan List">
+                                <i class="ph ph-list text-[15px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="productGrid" class="hidden"></div>
+                <div id="moreProductsWrap" class="mt-4 text-center hidden">
+                    <button id="btn-more-products" onclick="PublicUI.openCategoryPage(PublicUI.cat)" class="w-full py-2.5 rounded-xl surface-el border border-gray-200 dark:border-gray-800 text-[12px] font-bold text-primary hover:border-primary transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                        <span>Lihat Semua</span> <i class="ph ph-arrow-right text-[14px]"></i>
+                    </button>
+                </div>
+                
+                <div id="emptyState" class="hidden text-center py-12 surface-el rounded-[20px] border shadow-sm mt-3">
+                    <i class="ph ph-package text-[38px] text-gray-300 dark:text-gray-600 mx-auto mb-1.5 block"></i>
+                    <h3 class="text-[13px] font-bold text-mute" id="emptyTitle">Belum Ada Produk</h3>
+                </div>
+            </div>
+        </main>
+
+        <!-- WhatsApp Float -->
+        <a href="#" id="wa-button" target="_blank" class="fixed bottom-5 right-5 w-[52px] h-[52px] bg-[#25D366] text-white rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(37,211,102,0.4)] hover:scale-105 transition-all duration-300 z-40 hidden">
+            <svg viewBox="0 0 24 24" class="w-7 h-7 fill-current"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.82 9.82 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+        </a>
+
+        <!-- Flyer Modal (Support PNG Transparan & Rasio Asli) -->
+        <div id="flyer-modal" class="fixed inset-0 z-[90] hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+            <div class="relative bg-transparent max-w-sm w-full mx-auto flex flex-col items-center">
+                <button onclick="PublicUI.closeFlyer()" class="absolute -top-11 right-0 w-9 h-9 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center text-white transition-colors z-10">
+                    <i class="ph ph-x text-[20px]"></i>
+                </button>
+                <a id="flyer-link" href="#" target="_blank" class="w-full transition-opacity duration-300 cursor-pointer flex justify-center items-center">
+                    <img id="flyer-img" src="" class="max-w-full max-h-[80vh] w-auto h-auto object-contain drop-shadow-2xl rounded-[16px]">
+                </a>
+            </div>
+        </div>
+
+        <!-- Modal Semua Tombol Pintasan (Jika tombol > 4) -->
+        <div id="all-buttons-modal" class="fixed inset-0 z-[92] hidden items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div class="surface-el w-full max-w-sm rounded-[22px] border p-4 shadow-2xl">
+                <div class="flex items-center justify-between pb-3 mb-3 border-b border-gray-100 dark:border-gray-800">
+                    <h3 class="font-bold text-[14px] text-main">Semua Menu</h3>
+                    <button onclick="PublicUI.closeAllButtonsModal()" class="w-7 h-7 rounded-full flex items-center justify-center text-mute hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <i class="ph ph-x text-[16px]"></i>
+                    </button>
+                </div>
+                <div class="grid grid-cols-4 gap-2.5 max-h-[60vh] overflow-y-auto py-1" id="allButtonsGrid"></div>
+            </div>
+        </div>
+
+        <!-- Halaman Full Layar Kategori ("Lihat Semua") -->
+        <div id="category-full-modal" class="fixed inset-0 z-[95] hidden flex-col bg-[#f4f7fb] dark:bg-[#121212] animate-fade-in overflow-hidden">
+            <div class="header-glass px-4 py-2.5 flex items-center justify-between sticky top-0 z-20 shrink-0">
+                <div class="max-w-4xl w-full mx-auto flex items-center justify-between">
+                    <button onclick="PublicUI.closeCategoryPage()" class="flex items-center gap-1.5 text-main hover:text-primary font-bold text-[13px] py-1 pr-3 rounded-full transition-colors -ml-1">
+                        <i class="ph ph-arrow-left text-[19px]"></i>
+                        <span>Kembali</span>
+                    </button>
+                    <div class="flex gap-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-0.5 rounded-lg shadow-sm">
+                        <button onclick="PublicUI.toggleCatPageView('grid')" id="btn-cat-view-grid" class="p-1.5 rounded-md text-mute transition-colors focus:outline-none" title="Tampilan Kotak">
+                            <i class="ph ph-squares-four text-[15px]"></i>
+                        </button>
+                        <button onclick="PublicUI.toggleCatPageView('list')" id="btn-cat-view-list" class="p-1.5 rounded-md text-mute transition-colors focus:outline-none" title="Tampilan List">
+                            <i class="ph ph-list text-[15px]"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="surface-el border-b border-gray-200/70 dark:border-gray-800 px-4 py-2 shrink-0">
+                <div class="max-w-4xl w-full mx-auto flex overflow-x-auto hide-scrollbar gap-1.5" id="cat-page-pills"></div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-4" id="cat-page-scroll">
+                <div class="max-w-4xl w-full mx-auto pb-12">
+                    <h2 class="text-[17px] sm:text-[18px] font-extrabold text-main mb-3.5" id="cat-page-header-title"></h2>
+                    <div id="cat-page-body"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail Produk Modal -->
+        <div id="detail-modal" class="fixed inset-0 z-[100] hidden flex-col justify-end sm:items-center sm:justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div class="w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-[440px] bg-white dark:bg-[#1e1e1e] sm:rounded-[24px] flex flex-col transform transition-transform duration-300 translate-y-full sm:translate-y-0 relative overflow-hidden shadow-2xl" id="detail-box">
+                
+                <div class="flex justify-between items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800/50 bg-white/95 dark:bg-[#1e1e1e]/95 backdrop-blur-md sticky top-0 z-20 shrink-0">
+                    <button onclick="PublicUI.closeDetail()" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-main -ml-2">
+                        <i class="ph ph-caret-left text-[22px]"></i>
+                    </button>
+                    <h2 class="text-[15px] font-bold text-main">Detail Produk</h2>
+                    <div class="w-9 h-9"></div> 
+                </div>
+
+                <div class="flex-1 overflow-y-auto hide-scrollbar bg-white dark:bg-[#1e1e1e] relative" id="detail-scroll-area">
+                    <div class="w-full aspect-[4/3] bg-gray-50 dark:bg-gray-800/40 relative border-b border-gray-100 dark:border-gray-800/50 group overflow-hidden">
+                        <div id="dt-img-container" class="flex overflow-x-auto carousel-snap hide-scrollbar w-full h-full"></div>
+                        
+                        <button onclick="PublicUI.openImagePreview()" class="absolute top-2.5 right-2.5 bg-black/50 hover:bg-black/70 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full backdrop-blur-md flex items-center gap-1 transition-colors z-10">
+                            <i class="ph ph-magnifying-glass-plus text-[13px]"></i> Perbesar
+                        </button>
+
+                        <button id="dt-prev-btn" onclick="PublicUI.scrollDetailImage(-1)" class="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/85 dark:bg-black/60 text-main flex items-center justify-center shadow-md backdrop-blur transition-opacity hidden active:scale-95 z-10">
+                            <i class="ph ph-caret-left text-[18px]"></i>
+                        </button>
+                        <button id="dt-next-btn" onclick="PublicUI.scrollDetailImage(1)" class="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/85 dark:bg-black/60 text-main flex items-center justify-center shadow-md backdrop-blur transition-opacity hidden active:scale-95 z-10">
+                            <i class="ph ph-caret-right text-[18px]"></i>
+                        </button>
+                        <div id="dt-dots-container" class="absolute bottom-2.5 left-0 right-0 flex justify-center gap-1.5 z-10 pointer-events-none hidden"></div>
+                    </div>
+                    
+                    <div class="p-4 sm:p-5">
+                        <div class="flex flex-col mb-4">
+                            <div class="mb-1.5">
+                                <span id="dt-cat-badge" class="inline-block px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">Kategori</span>
+                            </div>
+                            <h3 class="font-bold text-main text-[17px] sm:text-[19px] leading-snug mb-2 whitespace-normal break-words" id="dt-title">Nama Produk</h3>
+                            <div class="flex items-center flex-wrap gap-2">
+                                <span id="dt-orig-price" class="text-mute text-[13px] line-through font-semibold hidden">Rp 0</span>
+                                <div class="font-black text-primary text-[19px] tracking-tight leading-none whitespace-nowrap" id="dt-price">Rp 0</div>
+                            </div>
+                            <div id="dt-promo-box" class="hidden mt-3 rounded-2xl border border-rose-100 bg-gradient-to-r from-rose-50 to-orange-50 px-3.5 py-3 dark:border-rose-900/40 dark:from-rose-950/30 dark:to-orange-950/20">
+                                <div class="flex items-center gap-2">
+                                    <span id="dt-promo-label" class="inline-flex items-center gap-1 rounded-full bg-rose-500 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white"><i class="ph ph-tag"></i><span>PROMO</span></span>
+                                    <span class="text-[11px] font-semibold text-rose-700 dark:text-rose-300">Berakhir dalam</span>
+                                </div>
+                                <div id="dt-promo-countdown" class="mt-2 flex items-center gap-1.5 text-[15px] font-black tracking-wider text-rose-700 dark:text-rose-300"></div>
+                                <div id="dt-promo-end-date" class="mt-1.5 text-[10px] font-medium text-rose-700/75 dark:text-rose-300/75"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="w-full h-[1px] bg-gray-100 dark:bg-gray-800/60 mb-4"></div>
+                        <h4 class="text-[14px] font-bold text-main mb-2.5">Deskripsi</h4>
+                        <div class="text-[13.5px] text-main opacity-90 leading-relaxed pb-5" id="dt-desc"></div>
+
+                        <!-- Produk Lainnya Secara Random (Ukuran Kecil) -->
+                        <div id="dt-related-wrap" class="pt-4 border-t border-gray-100 dark:border-gray-800/60 hidden">
+                            <h4 class="text-[12.5px] font-extrabold text-main mb-2.5">Produk Lainnya</h4>
+                            <div id="dt-related-list" class="grid grid-cols-2 gap-2"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-3.5 sm:p-4 border-t border-gray-100 dark:border-gray-800/50 bg-white dark:bg-[#1e1e1e] flex gap-2.5 shrink-0 relative z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] dark:shadow-none">
+                    <button id="dt-btn-demo" class="px-3.5 py-3 bg-blue-50 text-primary dark:bg-blue-900/20 dark:text-blue-400 rounded-xl text-[13px] font-bold hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors hidden items-center justify-center border border-blue-100 dark:border-blue-800/50" title="Lihat Demo">
+                        <i class="ph ph-eye text-[22px]"></i>
+                    </button>
+                    <button id="dt-btn-buy" class="flex-1 bg-primary text-white py-3 rounded-xl text-[14px] font-bold shadow-[0_8px_20px_rgba(8,102,255,0.25)] hover:bg-blue-600 transition-all flex items-center justify-center gap-2">
+                        <i class="ph ph-shopping-bag text-[20px]"></i> Dapatkan Sekarang
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pratinjau Gambar Penuh (Lightbox Zoom + Geser + Hanya Nama Produk & Tombol X) -->
+        <div id="img-lightbox" class="fixed inset-0 z-[150] hidden flex-col justify-between bg-black/95 backdrop-blur-md select-none animate-fade-in">
+            <div class="flex items-center justify-between px-4 py-3.5 bg-gradient-to-b from-black/80 to-transparent z-20">
+                <h3 id="lb-product-name" class="text-white font-bold text-[13px] sm:text-[14px] truncate pr-4"></h3>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button onclick="PublicUI.zoomLightbox(0.5)" class="w-8 h-8 rounded-full bg-white/15 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Perbesar">
+                        <i class="ph ph-plus text-[16px]"></i>
+                    </button>
+                    <button onclick="PublicUI.zoomLightbox(-0.5)" class="w-8 h-8 rounded-full bg-white/15 hover:bg-white/30 text-white flex items-center justify-center transition-colors" title="Perkecil">
+                        <i class="ph ph-minus text-[16px]"></i>
+                    </button>
+                    <button onclick="PublicUI.closeImagePreview()" class="w-9 h-9 rounded-full bg-white/20 hover:bg-red-500 text-white flex items-center justify-center transition-colors ml-1" title="Tutup">
+                        <i class="ph ph-x text-[20px]"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-1 relative flex items-center justify-center overflow-hidden w-full h-full" id="lb-touch-area">
+                <img id="lb-img" src="" alt="" class="max-w-full max-h-[82vh] object-contain zoom-img-transition cursor-grab active:cursor-grabbing" ondblclick="PublicUI.toggleDoubleTapZoom()">
+
+                <button id="lb-prev" onclick="PublicUI.stepLightboxImage(-1)" class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 hover:bg-white/30 text-white flex items-center justify-center backdrop-blur-md transition-all hidden">
+                    <i class="ph ph-caret-left text-[22px]"></i>
+                </button>
+                <button id="lb-next" onclick="PublicUI.stepLightboxImage(1)" class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 hover:bg-white/30 text-white flex items-center justify-center backdrop-blur-md transition-all hidden">
+                    <i class="ph ph-caret-right text-[22px]"></i>
+                </button>
+            </div>
+
+            <div class="py-4 flex justify-center gap-1.5 z-20" id="lb-dots"></div>
+        </div>
+    </template>
+
+    <!-- TPL: AUTH (Production Login) -->
+    <template id="tpl-auth">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-[#f4f7fb] dark:bg-[#121212] text-main overflow-y-auto w-full transition-colors duration-300">
+            <div class="relative z-10 w-full max-w-[350px] p-4 pointer-events-auto">
+                <div class="surface-el p-7 rounded-[24px] shadow-xl border border-gray-100 dark:border-gray-800 animate-fade-in text-center" id="auth-card">
+                    <div class="w-12 h-12 bg-primary/10 text-primary rounded-[16px] flex items-center justify-center mx-auto mb-3.5">
+                        <i class="ph ph-shield-check text-[26px]"></i>
+                    </div>
+                    <h1 class="text-lg font-extrabold tracking-tight text-main mb-5">Login Admin</h1>
+                    <form onsubmit="AdminAuth.doLogin(event)" class="space-y-3.5 text-left">
+                        <div>
+                            <label class="block text-[11px] font-bold text-mute mb-1 uppercase tracking-wider">Username</label>
+                            <input type="text" id="log-user" required autocomplete="username" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-main text-sm focus:outline-none focus:border-primary transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-mute mb-1 uppercase tracking-wider">Password</label>
+                            <input type="password" id="log-pass" required autocomplete="current-password" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent text-main text-sm focus:outline-none focus:border-primary transition-colors">
+                        </div>
+                        <div class="pt-1">
+                            <button type="submit" id="btn-login" class="w-full bg-primary hover:bg-blue-600 text-white font-bold py-3 rounded-xl shadow-[0_8px_20px_rgba(8,102,255,0.25)] transition-all flex justify-center items-center gap-2 text-[13.5px]">
+                                <span>Masuk</span> <i class="ph ph-sign-in text-[18px]"></i>
+                            </button>
+                        </div>
+                    </form>
+                    <div class="mt-5 text-center border-t border-gray-100 dark:border-gray-800 pt-3.5">
+                        <a href="/" onclick="event.preventDefault(); Router.navigate('/');" class="inline-flex items-center gap-1.5 text-[12px] font-semibold text-mute hover:text-primary transition-colors">
+                            <i class="ph ph-arrow-left text-[14px]"></i> Kembali ke Toko
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- TPL: DASHBOARD -->
+    <template id="tpl-dashboard">
+        <div class="flex-grow flex flex-col surface-el min-h-screen">
+            <header class="h-15 header-glass flex items-center justify-between px-4 sm:px-6 py-3 sticky top-0 z-20">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 sm:w-9 sm:h-9 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-bold shrink-0">
+                        <i class="ph ph-shield-check text-[20px]"></i>
+                    </div>
+                    <h1 class="font-bold text-[14px] sm:text-[15px] text-main truncate max-w-[160px] sm:max-w-xs" id="dashHeaderTitle">Panel Kendali</h1>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <a href="/" onclick="event.preventDefault(); Router.navigate('/');" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold surface-el border hover:border-primary transition-colors text-main shadow-sm">
+                        <i class="ph ph-globe text-[15px] text-primary"></i> <span>Toko</span>
+                    </a>
+                    <button onclick="Theme.toggle()" class="p-1.5 sm:p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-mute transition-colors">
+                        <i class="ph ph-moon text-[19px] block dark:hidden"></i>
+                        <i class="ph ph-sun text-[19px] hidden dark:block text-yellow-400"></i>
+                    </button>
+                    <div class="h-8 w-8 bg-primary text-white rounded-full flex items-center justify-center font-bold text-xs shadow-sm" id="dashAdminAv">A</div>
+                </div>
+            </header>
+            <main class="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 overflow-y-auto" id="dashViews"></main>
+            
+            <div id="modal-wrap" class="fixed inset-0 bg-black/60 z-[100] hidden items-center justify-center p-4 backdrop-blur-sm opacity-0 transition-opacity duration-250">
+                <div class="surface-el w-full max-w-lg rounded-2xl shadow-xl border flex flex-col transform scale-95 transition-transform duration-250 max-h-[90vh]" id="modal-box">
+                    <div class="p-4 border-b surface-el flex justify-between items-center sticky top-0 rounded-t-2xl z-10">
+                        <h3 class="font-bold text-main text-[14px]" id="modal-title">Title</h3>
+                        <button onclick="Modal.close()" class="text-mute hover:bg-gray-100 dark:hover:bg-gray-800 p-1.5 rounded-lg transition-colors"><i class="ph ph-x text-[18px]"></i></button>
+                    </div>
+                    <div class="p-4 sm:p-5 overflow-y-auto" id="modal-body"></div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        const Utils = {
+            escapeHTML(str) {
+                if(typeof str !== 'string') return '';
+                return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+            },
+            toDriveThumbnail(url, size = 'w1000') {
+                if (!url || typeof url !== 'string') return '';
+                const p = url.trim();
+                if (/^[a-zA-Z0-9_-]{25,50}$/.test(p)) {
+                    return `https://drive.google.com/thumbnail?id=${p}&sz=${size}`;
+                }
+                let fileId = null;
+                const matchFile = p.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+                const matchId = p.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                if (matchFile && matchFile[1]) fileId = matchFile[1];
+                else if (matchId && matchId[1]) fileId = matchId[1];
+
+                if (fileId && p.includes('drive.google.com')) {
+                    return `https://drive.google.com/thumbnail?id=${fileId}&sz=${size}`;
+                }
+                return p;
+            },
+            sanitizeURL(url) {
+                if(!url) return '#';
+                const p = this.toDriveThumbnail(url.trim());
+                if(p === 'none') return 'none';
+                if(p.startsWith('http://') || p.startsWith('https://') || p.startsWith('wa.me/') || p.startsWith('mailto:') || p.startsWith('tel:') || p.startsWith('data:image/') || p.startsWith('blob:')) return p;
+                return '#'; 
+            },
+            formatRp(angka) {
+                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
+            },
+            placeholder: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'%3E%3Crect width='150' height='150' fill='%23f8fafc'/%3E%3Cpath d='M75 50 C88.8 50 100 61.2 100 75 C100 88.8 88.8 100 75 100 C61.2 100 50 88.8 50 75 C50 61.2 61.2 50 75 50 Z M75 55 C64 55 55 64 55 75 C55 86 64 95 75 95 C86 95 95 86 95 75 C95 64 86 55 75 55 Z' fill='%23cbd5e1'/%3E%3C/svg%3E"
+        };
+
+        const PWAManager = {
+            deferredPrompt: null,
+            init() {
+                this.updateManifest(State.public.store || {});
+                this.registerSW();
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    this.deferredPrompt = e;
+                });
+                window.addEventListener('appinstalled', () => {
+                    this.deferredPrompt = null;
+                    Notify.show('Aplikasi berhasil diinstal', 'success');
+                });
+            },
+            registerSW() {
+                if ('serviceWorker' in navigator) {
+                    const swCode = `
+                        self.addEventListener('install', e => self.skipWaiting());
+                        self.addEventListener('activate', e => self.clients.claim());
+                        self.addEventListener('fetch', e => {}); 
+                    `;
+                    const blob = new Blob([swCode], {type: 'application/javascript'});
+                    navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+                }
+            },
+            updateManifest(st) {
+                const appName = st?.app_name || st?.store_name || 'MIR Digital Store';
+                const rawLogo = st?.app_logo_url || st?.logo_light_url || DEFAULT_APP_ICON;
+                const icon192 = Utils.toDriveThumbnail(rawLogo, 'w192') || DEFAULT_APP_ICON;
+                const icon512 = Utils.toDriveThumbnail(rawLogo, 'w512') || DEFAULT_APP_ICON;
+                
+                const fav = document.getElementById('app-favicon');
+                const apl = document.getElementById('app-apple-icon');
+                if (fav) fav.href = icon192;
+                if (apl) apl.href = icon512;
+
+                const manifest = {
+                    name: appName,
+                    short_name: appName,
+                    description: st?.store_tagline || 'MIR Digital Store',
+                    start_url: window.location.origin + '/',
+                    scope: window.location.origin + '/',
+                    display: 'standalone',
+                    background_color: '#ffffff',
+                    theme_color: '#0866FF',
+                    icons: [
+                        { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+                        { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+                    ]
+                };
+                
+                let link = document.getElementById('dynamic-manifest');
+                if(!link) { 
+                    link = document.createElement('link'); 
+                    link.id = 'dynamic-manifest'; 
+                    link.rel = 'manifest'; 
+                    document.head.appendChild(link); 
+                }
+                const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+                link.href = URL.createObjectURL(blob);
+            }
+        };
+
+        const AppManager = {
+            removeSplash() {
+                const splash = document.getElementById('splash-screen');
+                if (splash && splash.style.opacity !== '0') {
+                    const elapsed = Date.now() - window.appStartTime;
+                    const delay = Math.max(0, 1200 - elapsed);
+                    setTimeout(() => { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 500); }, delay);
+                }
+            }
+        };
+
+        const Notify = {
+            show(msg, type = 'info') {
+                const w = document.getElementById('notify-wrap'); if(!w) return;
+                const el = document.createElement('div'); el.className = `notify n-${type}`;
+                el.innerHTML = `<span>${Utils.escapeHTML(msg)}</span>`;
+                w.appendChild(el);
+                requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+                setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 2800);
+            }
+        };
+
+        const API = {
+            url: CONFIG.API_URL,
+            async req(action, payload = {}) {
+                const token = sessionStorage.getItem('mir_admin_token');
+
+                if(!this.url || this.url.trim() === "") {
+                    return { success: false, message: "API Vercel belum tersedia. Pastikan fungsi /api/gas sudah dipasang." };
+                }
+                
+                try {
+                    const res = await fetch(this.url, {
+                        method: 'POST',
+                        body: JSON.stringify({ action, payload, token }),
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await res.json();
+                    if(!data.success && data.code === 401) AdminAuth.logout(true);
+                    return data;
+                } catch(e) {
+                    return { success: false, message: "Koneksi ke server gagal." };
+                }
+            }
+        };
+
+        const State = {
+            public: JSON.parse(localStorage.getItem('mir_cache_store')) || { store: {}, categories: [], banners: [], buttons: [], products: [] },
+            timer: null,
+            async pullPublic() {
+                if (!CONFIG.API_URL) return false;
+                const res = await API.req('getStore');
+                if (res.success && res.data) {
+                    const newDataStr = JSON.stringify(res.data);
+                    if (newDataStr !== JSON.stringify(this.public)) {
+                        this.public = res.data;
+                        localStorage.setItem('mir_cache_store', newDataStr);
+                        document.title = this.public.store?.store_name || "MIR Digital Store";
+                        PWAManager.updateManifest(this.public.store);
+                        
+                        const searchInput = document.getElementById('searchInput');
+                        const isTyping = searchInput && searchInput === document.activeElement;
+                        
+                        if (!isTyping && (Router.current === '/' || Router.current.startsWith('/product/') || Router.current.startsWith('/category'))) {
+                            PublicUI.renderAll();
+                        }
+                    }
+                }
+                return res.success;
+            },
+            startSync() { this.stopSync(); if(CONFIG.API_URL) this.timer = setInterval(() => this.pullPublic(), CONFIG.SYNC_INTERVAL); },
+            stopSync() { if (this.timer) clearInterval(this.timer); },
+            
+            updateLocal(key, id, data, action) {
+                if(!this.public[key]) this.public[key] = [];
+                if(action === 'delete') { this.public[key] = this.public[key].filter(x => x.id !== id); } 
+                else if(action === 'deleteBatch' && Array.isArray(id)) {
+                    const idSet = new Set(id);
+                    this.public[key] = this.public[key].filter(x => !idSet.has(x.id));
+                }
+                else if(action === 'save') {
+                    const idx = this.public[key].findIndex(x => x.id === id);
+                    if(idx > -1) this.public[key][idx] = { ...this.public[key][idx], ...data };
+                    else this.public[key].unshift({ id, ...data });
+                }
+                localStorage.setItem('mir_cache_store', JSON.stringify(this.public));
+            }
+        };
+
+        const Theme = {
+            init() {
+                const saved = localStorage.getItem('theme');
+                this.apply(saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches));
+            },
+            apply(isDark) {
+                const html = document.documentElement;
+                if (isDark) { html.classList.add('dark'); localStorage.setItem('theme', 'dark'); }
+                else { html.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
+                document.querySelectorAll('#pub-logo').forEach(img => { 
+                    const lg = State.public.store?.logo_light_url; const dg = State.public.store?.logo_dark_url;
+                    const chosen = (isDark && dg) ? dg : (lg || dg);
+                    if(chosen) {
+                        img.src = Utils.sanitizeURL(chosen);
+                        img.classList.remove('hidden'); 
+                    } else { img.classList.add('hidden'); }
+                });
+            },
+            toggle() { this.apply(!document.documentElement.classList.contains('dark')); }
+        };
+
+        const ImageUploader = {
+            allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
+
+            syncPreview(targetId) {
+                const inp = document.getElementById(targetId);
+                const prev = document.getElementById(`prev-${targetId}`);
+                const emptyIcon = document.getElementById(`empty-icon-${targetId}`);
+                if (!inp || !prev) return;
+                const val = inp.value.trim();
+                if (val) {
+                    const thumb = Utils.toDriveThumbnail(val);
+                    if (thumb !== val && !val.startsWith('data:')) inp.value = thumb;
+                    prev.src = Utils.sanitizeURL(thumb);
+                    prev.classList.remove('hidden');
+                    if (emptyIcon) emptyIcon.classList.add('hidden');
+                } else {
+                    prev.classList.add('hidden');
+                    if (emptyIcon) emptyIcon.classList.remove('hidden');
+                }
+            },
+
+            async handleSelect(event, targetId) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const statusDiv = document.getElementById(`status-${targetId}`);
+                if (statusDiv) statusDiv.classList.remove('hidden');
+
+                if (!this.allowedTypes.includes(file.type.toLowerCase())) {
+                    if (statusDiv) statusDiv.innerHTML = `<div class="text-[11px] text-red-500 font-semibold mt-1">Format wajib JPG, PNG, atau WEBP.</div>`;
+                    event.target.value = '';
+                    return;
+                }
+
+                if (statusDiv) {
+                    statusDiv.innerHTML = `<div class="text-[11px] text-primary font-semibold mt-1 flex items-center gap-1.5"><i class="ph ph-spinner animate-spin text-[14px]"></i> Mengompres & mengupload...</div>`;
+                }
+
+                try {
+                    const compressedBlob = await this.compressToTargetKB(file, 100, 300);
+                    const finalKB = Math.max(1, Math.round(compressedBlob.size / 1024));
+                    const cleanName = file.name.replace(/\.[^/.]+$/, "") + '.webp';
+                    const finalFile = new File([compressedBlob], cleanName, { type: 'image/webp' });
+                    await this.doUpload(finalFile, targetId, finalKB);
+                } catch (err) {
+                    if (statusDiv) statusDiv.innerHTML = `<div class="text-[11px] text-red-500 font-semibold mt-1">Gagal memproses gambar.</div>`;
+                }
+                event.target.value = '';
+            },
+
+            async doUpload(file, targetId, kbSize) {
+                const statusDiv = document.getElementById(`status-${targetId}`);
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const dataUrl = e.target.result;
+                    const base64 = dataUrl.split(',')[1];
+                    const res = await API.req('uploadImage', {
+                        name: file.name,
+                        mimeType: file.type,
+                        base64: base64
+                    });
+
+                    if (res.success && res.data && res.data.url) {
+                        const finalThumbUrl = Utils.toDriveThumbnail(res.data.url);
+                        const inputEl = document.getElementById(targetId);
+                        if (inputEl) {
+                            inputEl.value = finalThumbUrl;
+                            this.syncPreview(targetId);
+                        }
+                        if (statusDiv) {
+                            statusDiv.innerHTML = `<div class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1 flex items-center gap-1"><i class="ph ph-check-circle text-[14px]"></i> Tersimpan (${kbSize} KB)</div>`;
+                            setTimeout(() => { if(statusDiv) { statusDiv.classList.add('hidden'); statusDiv.innerHTML = ''; } }, 2500);
+                        }
+                    } else if (statusDiv) {
+                        statusDiv.innerHTML = `<div class="text-[11px] text-red-500 font-semibold mt-1">${Utils.escapeHTML(res.message || 'Gagal upload')}</div>`;
+                    }
+                };
+                reader.readAsDataURL(file);
+            },
+
+            compressToTargetKB(file, minKB = 100, maxKB = 300) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = ev => {
+                        const img = new Image();
+                        img.src = ev.target.result;
+                        img.onload = () => {
+                            let maxDim = 1280;
+                            let quality = 0.84;
+                            const outType = 'image/webp';
+
+                            const attempt = () => {
+                                const canvas = document.createElement('canvas');
+                                let w = img.width;
+                                let h = img.height;
+                                if (w > h && w > maxDim) { h = Math.round(h * (maxDim / w)); w = maxDim; }
+                                else if (h > maxDim) { w = Math.round(w * (maxDim / h)); h = maxDim; }
+                                canvas.width = w;
+                                canvas.height = h;
+                                const ctx = canvas.getContext('2d');
+                                ctx.clearRect(0, 0, w, h);
+                                ctx.drawImage(img, 0, 0, w, h);
+
+                                canvas.toBlob(blob => {
+                                    if (!blob) return reject(new Error('Canvas error'));
+                                    const kb = blob.size / 1024;
+                                    if (kb <= maxKB || (quality <= 0.35 && maxDim <= 600)) {
+                                        resolve(blob);
+                                    } else {
+                                        if (quality > 0.45) {
+                                            quality -= 0.12;
+                                        } else {
+                                            maxDim = Math.round(maxDim * 0.8);
+                                        }
+                                        attempt();
+                                    }
+                                }, outType, quality);
+                            };
+                            attempt();
+                        };
+                        img.onerror = err => reject(err);
+                    };
+                    reader.onerror = err => reject(err);
+                });
+            }
+        };
+
+        const Router = {
+            current: null, dashCached: false,
+            
+            safePushState(path, replace = false) {
+                try {
+                    if (replace) history.replaceState({ path: path }, '', path);
+                    else history.pushState({ path: path }, '', path);
+                } catch (e) {}
+            },
+
+            navigate(path, replace = false) {
+                if(this.current === path) return;
+                this.safePushState(path, replace);
+                this.load(path);
+            },
+            
+            load(forcePath) {
+                let path = forcePath;
+                if (!path) {
+                    try {
+                        path = window.history.state?.path || window.location.pathname;
+                        if (!path || path === 'blank' || path.includes('blob:') || path.endsWith('.html')) path = '/';
+                    } catch(e) { path = '/'; }
+                }
+                
+                if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+                
+                this.current = path;
+                const v = document.getElementById('router-view');
+
+                if (path === '/' || path.startsWith('/product/') || path.startsWith('/category')) {
+                    if (!document.getElementById('pub-name')) {
+                        v.innerHTML = ''; 
+                        v.appendChild(document.getElementById('tpl-public').content.cloneNode(true));
+                        PublicUI.renderAll();
+                        PublicUI.initLightboxGestures();
+                        
+                        if(sessionStorage.getItem('mir_admin_token')) { 
+                            document.getElementById('nav-user-icon')?.classList.add('hidden'); 
+                            document.getElementById('nav-dash-icon')?.classList.remove('hidden'); 
+                        }
+                        
+                        State.pullPublic().then(() => {
+                            AppManager.removeSplash();
+                            this.handlePublicSubRoutes(path);
+                        });
+                        if (State.public.products && State.public.products.length > 0) AppManager.removeSplash();
+                        if(!State.timer) State.startSync();
+                    } else {
+                        this.handlePublicSubRoutes(path);
+                    }
+                } 
+                else if (path === '/admin/login') {
+                    if(sessionStorage.getItem('mir_admin_token')) { this.navigate('/admin/dashboard', true); return; }
+                    State.stopSync(); 
+                    v.innerHTML = ''; v.appendChild(document.getElementById('tpl-auth').content.cloneNode(true));
+                    Theme.apply(document.documentElement.classList.contains('dark')); AppManager.removeSplash();
+                } 
+                else if (path.startsWith('/admin/dashboard')) {
+                    State.stopSync();
+                    if (!sessionStorage.getItem('mir_admin_token')) { this.navigate('/admin/login', true); return; }
+                    
+                    if (!document.getElementById('dashViews')) { 
+                        v.innerHTML = ''; v.appendChild(document.getElementById('tpl-dashboard').content.cloneNode(true)); 
+                    }
+                    
+                    const parts = path.split('/');
+                    const viewPart = parts[3] || 'overview';
+                    
+                    const vDash = document.getElementById('dashViews');
+                    if (!Dash.data && vDash) {
+                        vDash.innerHTML = '<div class="flex flex-col items-center justify-center py-24 text-mute animate-fade-in"><i class="ph ph-spinner animate-spin text-[40px] text-primary mb-3"></i><p class="text-[12px] font-bold">Memuat Panel...</p></div>';
+                    }
+                    
+                    AppManager.removeSplash();
+                    Dash.init().then(() => Dash.view(viewPart, false));
+                } 
+                else {
+                    this.navigate('/', true);
+                }
+            },
+
+            handlePublicSubRoutes(path) {
+                PublicUI.closeImagePreview();
+                if (path === '/') {
+                    PublicUI.closeDetail(false);
+                    PublicUI.closeCategoryPage(false);
+                } else if (path.startsWith('/product/')) {
+                    const id = decodeURIComponent(path.split('/')[2] || '');
+                    if(id) PublicUI.openProduct(id, false);
+                } else if (path.startsWith('/category')) {
+                    PublicUI.closeDetail(false);
+                    const catParam = decodeURIComponent(path.split('/')[2] || 'Semua');
+                    PublicUI.openCategoryPage(catParam, false);
+                }
+            }
+        };
+
+        const PublicUI = {
+            cat: 'Semua', query: '', bannerInterval: null, searchTimeout: null,
+            viewMode: localStorage.getItem('mir_view_mode') || 'grid',
+            catPageViewMode: 'grid', viewTimer: null, catTimer: null,
+            activeCatPageFilter: 'Semua',
+            currentDetailImages: [], currentDetailName: '',
+            lbIndex: 0, lbZoom: 1, promoTimer: null,
+
+            promoInfo(product) {
+                const original = Number(product?.original_price || 0);
+                const sale = Number(product?.price || 0);
+                const discount = original > sale && sale > 0;
+                if (!discount) return { active: false, discount: false, price: sale, end: 0 };
+                const rawEnd = String(product?.promo_end_at || '').trim();
+                const end = rawEnd ? new Date(rawEnd).getTime() : 0;
+                const validEnd = !rawEnd || Number.isFinite(end);
+                const active = validEnd && (!end || Date.now() < end);
+                return { active, discount, price: active ? sale : original, end: active ? end : 0, label: String(product?.promo_label || 'PROMO').trim() || 'PROMO' };
+            },
+
+            promoBadgeHTML(product) {
+                const info = this.promoInfo(product);
+                if (!info.active || !info.discount) return '';
+                const label = Utils.escapeHTML(info.label);
+                const percent = Math.max(1, Math.round((1 - Number(product.price) / Number(product.original_price)) * 100));
+                return `<span class="absolute top-2.5 left-2.5 z-10 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-rose-600 to-orange-500 px-2.5 py-1 text-[9px] font-extrabold tracking-wide text-white shadow-md"><i class="ph ph-tag text-[11px]"></i>${label}<span class="opacity-80">·</span>${percent}%</span>`;
+            },
+
+            promoCountdownHTML(product) {
+                const info = this.promoInfo(product);
+                if (!info.active || !info.discount || !info.end) return '';
+                return `<div class="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-rose-600 dark:text-rose-300"><i class="ph ph-clock-countdown text-[13px]"></i><span>Berakhir dalam</span><span data-promo-countdown data-promo-end="${info.end}" class="tabular-nums tracking-wide">--:--:--</span></div>`;
+            },
+
+            startPromoClock() {
+                if (this.promoTimer) return;
+                this.promoTimer = setInterval(() => {
+                    let expired = false;
+                    document.querySelectorAll('[data-promo-countdown]').forEach(el => {
+                        const end = Number(el.dataset.promoEnd || 0);
+                        const left = end - Date.now();
+                        if (left <= 0) { el.textContent = '00:00:00'; expired = true; return; }
+                        const days = Math.floor(left / 86400000);
+                        const hours = Math.floor((left % 86400000) / 3600000);
+                        const mins = Math.floor((left % 3600000) / 60000);
+                        const secs = Math.floor((left % 60000) / 1000);
+                        el.textContent = days ? `${days}h ${String(hours).padStart(2,'0')}j ${String(mins).padStart(2,'0')}m` : `${String(hours).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+                    });
+                    if (expired) {
+                        const route = Router.current || '/';
+                        if (route.startsWith('/product/')) this.openProduct(decodeURIComponent(route.split('/')[2] || ''), false);
+                        else this.renderAll();
+                    }
+                }, 1000);
+            },
+
+            truncateWords(str, numWords) {
+                if(!str) return ''; const words = str.trim().split(/\s+/);
+                if(words.length <= numWords) return str;
+                return words.slice(0, numWords).join(' ') + '...';
+            },
+            
+            parseMD(text) {
+                if(!text) return '';
+                let escapedText = Utils.escapeHTML(text);
+                let lines = escapedText.split('\n');
+                let parsedLines = lines.map(line => {
+                    let l = line.trim();
+                    l = l.replace(/\*(.*?)\*/g, '<strong class="font-bold text-main">$1</strong>')
+                         .replace(/_(.*?)_/g, '<em class="italic text-main">$1</em>');
+                    
+                    if (l.match(/^-\s+(.*)/)) {
+                        return l.replace(/^-\s+(.*)/, '<div class="flex items-start gap-1.5"><span class="text-main leading-relaxed">&bull;</span><span class="flex-1 leading-relaxed">$1</span></div>');
+                    }
+                    if (l.match(/^(\d+)\.\s+(.*)/)) {
+                        return l.replace(/^(\d+)\.\s+(.*)/, '<div class="flex items-start gap-1.5"><span class="text-main leading-relaxed min-w-[16px]">$1.</span><span class="flex-1 leading-relaxed">$2</span></div>');
+                    }
+                    return l ? `<div>${l}</div>` : '<div class="h-2.5"></div>'; 
+                });
+                return parsedLines.join('');
+            },
+
+            searchProducts(rawQuery) {
+                const q = (rawQuery || '').toLowerCase().trim();
+                const allProds = State.public.products || [];
+                if (!q) return allProds;
+
+                const tokens = q.split(/\s+/).filter(Boolean);
+                const cats = State.public.categories || [];
+
+                const scored = [];
+                allProds.forEach(p => {
+                    const name = (p.name || '').toLowerCase();
+                    const desc = (p.description || '').toLowerCase();
+                    const catObj = cats.find(c => c.id === p.category_id);
+                    const catName = (catObj ? catObj.name : '').toLowerCase();
+
+                    let score = 0;
+                    if (name === q) score += 200;
+                    else if (name.startsWith(q)) score += 120;
+                    else if (name.includes(q)) score += 80;
+
+                    if (catName === q || catName.includes(q)) score += 60;
+
+                    let matchedTokens = 0;
+                    tokens.forEach(tk => {
+                        const wordRegex = new RegExp(`(^|\\s|[^a-z0-9])${tk.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
+                        if (wordRegex.test(name)) {
+                            score += 35;
+                            matchedTokens++;
+                        } else if (name.includes(tk)) {
+                            score += 20;
+                            matchedTokens++;
+                        } else if (catName.includes(tk)) {
+                            score += 18;
+                            matchedTokens++;
+                        } else if (desc.includes(tk)) {
+                            score += 5;
+                            matchedTokens++;
+                        }
+                    });
+
+                    if (matchedTokens === tokens.length && score > 0) {
+                        scored.push({ product: p, score });
+                    }
+                });
+
+                scored.sort((a, b) => b.score - a.score);
+                return scored.map(s => s.product);
+            },
+
+            checkAuthNav() { if(sessionStorage.getItem('mir_admin_token')) { Router.navigate('/admin/dashboard'); } else { Router.navigate('/admin/login'); } },
+            
+            renderAll() { 
+                this.renderInfo(); 
+                this.renderBan(); 
+                this.renderQuickMenuCard(); 
+                this.renderCat(); 
+                this.renderPopular(); 
+                this.renderProd(); 
+                this.renderFlyer(); 
+            },
+            
+            handleButtonTarget(target) {
+                if (!target || target === 'none') return;
+                this.closeAllButtonsModal();
+                const isCat = (State.public.categories || []).find(z => z.name.toLowerCase() === target.toLowerCase());
+                if (isCat) {
+                    this.openCategoryPage(isCat.name);
+                } else if (target.startsWith('PRD-') || (State.public.products || []).some(p => p.id === target)) {
+                    this.openProduct(target);
+                } else {
+                    window.open(Utils.sanitizeURL(target), '_blank');
+                }
+            },
+
+            renderQuickMenuCard() {
+                const wrap = document.getElementById('quickMenuCardWrap');
+                const grid = document.getElementById('quickMenuGrid');
+                if (!wrap || !grid) return;
+
+                const st = State.public.store || {};
+                if (st.quick_buttons_status === 'inactive' || this.query) {
+                    wrap.classList.add('hidden');
+                    return;
+                }
+
+                const activeBtns = (State.public.buttons || []).filter(b => b.status !== 'inactive');
+                if (activeBtns.length === 0) {
+                    wrap.classList.add('hidden');
+                    return;
+                }
+
+                wrap.classList.remove('hidden');
+                let itemsToRender = [];
+                if (activeBtns.length <= 4) {
+                    itemsToRender = activeBtns.map(b => ({
+                        name: b.name,
+                        image_url: b.image_url,
+                        isSeeAll: false,
+                        action: `PublicUI.handleButtonTarget('${Utils.escapeHTML(b.target_url)}')`
+                    }));
+                } else {
+                    itemsToRender = activeBtns.slice(0, 3).map(b => ({
+                        name: b.name,
+                        image_url: b.image_url,
+                        isSeeAll: false,
+                        action: `PublicUI.handleButtonTarget('${Utils.escapeHTML(b.target_url)}')`
+                    }));
+                    itemsToRender.push({
+                        name: 'Lihat Semua',
+                        image_url: '',
+                        isSeeAll: true,
+                        action: `PublicUI.openAllButtonsModal()`
+                    });
+                }
+
+                grid.innerHTML = itemsToRender.map(item => {
+                    const iconBox = item.isSeeAll
+                        ? `<div class="w-11 h-11 sm:w-12 sm:h-12 rounded-[14px] border border-orange-100 dark:border-orange-800/50 bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 flex items-center justify-center shadow-sm mb-1">
+                             <i class="ph ph-squares-four text-[20px]"></i>
+                           </div>`
+                        : `<div class="w-11 h-11 sm:w-12 sm:h-12 rounded-[14px] border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 overflow-hidden flex items-center justify-center shadow-sm mb-1">
+                             <img src="${Utils.sanitizeURL(item.image_url || Utils.placeholder)}" class="w-full h-full object-cover">
+                           </div>`;
+
+                    return `
+                        <button onclick="${item.action}" class="flex flex-col items-center justify-start group focus:outline-none py-0.5">
+                            ${iconBox}
+                            <span class="text-[10px] sm:text-[11px] font-semibold text-main text-center leading-tight line-clamp-2 whitespace-pre-line px-0.5 group-hover:text-primary transition-colors">${Utils.escapeHTML(item.name)}</span>
+                        </button>
+                    `;
+                }).join('');
+            },
+
+            openAllButtonsModal() {
+                const modal = document.getElementById('all-buttons-modal');
+                const grid = document.getElementById('allButtonsGrid');
+                if (!modal || !grid) return;
+
+                const activeBtns = (State.public.buttons || []).filter(b => b.status !== 'inactive');
+                grid.innerHTML = activeBtns.map(b => `
+                    <button onclick="PublicUI.handleButtonTarget('${Utils.escapeHTML(b.target_url)}')" class="flex flex-col items-center justify-start group focus:outline-none py-1">
+                        <div class="w-11 h-11 rounded-[14px] border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 overflow-hidden flex items-center justify-center shadow-sm mb-1">
+                            <img src="${Utils.sanitizeURL(b.image_url || Utils.placeholder)}" class="w-full h-full object-cover">
+                        </div>
+                        <span class="text-[10px] font-semibold text-main text-center leading-tight line-clamp-2 whitespace-pre-line group-hover:text-primary">${Utils.escapeHTML(b.name)}</span>
+                    </button>
+                `).join('');
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            },
+
+            closeAllButtonsModal() {
+                const modal = document.getElementById('all-buttons-modal');
+                if (!modal) return;
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            },
+
+            openCategoryPage(catName = 'Semua', pushState = true) {
+                const allCats = (State.public.categories || []).filter(c => c.status !== 'inactive');
+                if (!catName || catName === 'Semua') {
+                    this.activeCatPageFilter = allCats.length > 0 ? allCats[0].name : 'Semua';
+                } else {
+                    this.activeCatPageFilter = catName;
+                }
+
+                const modal = document.getElementById('category-full-modal');
+                if (!modal) return;
+
+                this.renderCategoryPageContent();
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+
+                if (pushState) {
+                    const route = `/category/${encodeURIComponent(this.activeCatPageFilter)}`;
+                    Router.safePushState(route, false);
+                    Router.current = route;
+                }
+            },
+
+            closeCategoryPage(pushState = true) {
+                const modal = document.getElementById('category-full-modal');
+                if (!modal || modal.classList.contains('hidden')) return;
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+
+                if (pushState) {
+                    Router.safePushState('/', false);
+                    Router.current = '/';
+                }
+            },
+
+            toggleCatPageView(mode) {
+                if (this.catPageViewMode === mode) return;
+                this.catPageViewMode = mode;
+                this.renderCategoryPageContent();
+            },
+
+            renderCategoryPageContent() {
+                const titleEl = document.getElementById('cat-page-header-title');
+                const pillsEl = document.getElementById('cat-page-pills');
+                const bodyEl = document.getElementById('cat-page-body');
+                const gridBtn = document.getElementById('btn-cat-view-grid');
+                const listBtn = document.getElementById('btn-cat-view-list');
+                if (!titleEl || !pillsEl || !bodyEl) return;
+
+                if (this.catPageViewMode === 'grid') {
+                    gridBtn?.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-primary', 'shadow-sm');
+                    gridBtn?.classList.remove('text-mute');
+                    listBtn?.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-primary', 'shadow-sm');
+                    listBtn?.classList.add('text-mute');
+                } else {
+                    listBtn?.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-primary', 'shadow-sm');
+                    listBtn?.classList.remove('text-mute');
+                    gridBtn?.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-primary', 'shadow-sm');
+                    gridBtn?.classList.add('text-mute');
+                }
+
+                const allCats = (State.public.categories || []).filter(c => c.status !== 'inactive');
+                const allProds = State.public.products || [];
+
+                titleEl.textContent = this.activeCatPageFilter;
+
+                pillsEl.innerHTML = allCats.map(c => {
+                    const isAct = c.name.toLowerCase() === this.activeCatPageFilter.toLowerCase();
+                    const cls = isAct 
+                        ? "bg-primary text-white font-bold border-primary shadow-sm" 
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-transparent hover:border-gray-300 font-semibold";
+                    return `<button onclick="PublicUI.openCategoryPage('${Utils.escapeHTML(c.name)}', true)" class="px-2.5 py-1 rounded-full border text-[10.5px] whitespace-nowrap transition-all ${cls}">${Utils.escapeHTML(c.name)}</button>`;
+                }).join('');
+
+                const selectedCatObj = allCats.find(c => c.name.toLowerCase() === this.activeCatPageFilter.toLowerCase());
+                const catProds = selectedCatObj ? allProds.filter(p => p.category_id === selectedCatObj.id) : allProds;
+
+                if (catProds.length === 0) {
+                    bodyEl.className = '';
+                    bodyEl.innerHTML = `<div class="text-center py-14 surface-el rounded-[20px] border"><i class="ph ph-package text-[38px] text-mute mb-1.5 block"></i><p class="text-xs font-bold text-mute">Belum ada produk</p></div>`;
+                    return;
+                }
+
+                if (this.catPageViewMode === 'grid') {
+                    bodyEl.className = 'grid grid-cols-2 gap-3 sm:gap-4';
+                    bodyEl.innerHTML = catProds.map(x => {
+                        const imgSrc = (x.images && x.images.length > 0) ? x.images[0] : Utils.placeholder;
+                        const promo = this.promoInfo(x);
+                        const origPrice = (promo.active && promo.discount) ? `<div class="text-mute text-[11px] line-through font-medium leading-none mr-1.5 shrink-0">${Utils.formatRp(x.original_price)}</div>` : '';
+                        const promoBadge = this.promoBadgeHTML(x);
+                        const shownPrice = promo.price;
+                        return `
+                            <div class="bg-white dark:bg-gray-900 rounded-[20px] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden cursor-pointer hover-card-lift flex flex-col relative" onclick="PublicUI.openProduct('${x.id}')">
+                                <div class="w-full aspect-square bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-800 relative overflow-hidden p-1.5">
+                                    ${promoBadge}
+                                    <img src="${Utils.sanitizeURL(imgSrc)}" class="w-full h-full object-cover rounded-[14px]" loading="lazy">
+                                </div>
+                                <div class="p-3 sm:p-3.5 flex flex-col flex-1 justify-between">
+                                    <h3 class="font-bold text-main text-[12.5px] sm:text-[13px] leading-snug mb-2 line-clamp-2">${Utils.escapeHTML(PublicUI.truncateWords(x.name, 10))}</h3>
+                                    <div class="mt-auto pt-1 flex items-center flex-wrap">
+                                        ${origPrice}
+                                        <div class="font-extrabold text-primary text-[14px] sm:text-[15px] tracking-tight leading-none">${Utils.formatRp(shownPrice)}</div>
+                                    </div>
+                                </div>
+                            </div>`;
+                    }).join('');
+                } else {
+                    bodyEl.className = 'flex flex-col gap-3';
+                    bodyEl.innerHTML = catProds.map(x => {
+                        const imgSrc = (x.images && x.images.length > 0) ? x.images[0] : Utils.placeholder;
+                        const promo = this.promoInfo(x);
+                        const origPrice = (promo.active && promo.discount) ? `<div class="text-mute text-[11px] line-through font-medium leading-none mr-1.5 shrink-0">${Utils.formatRp(x.original_price)}</div>` : '';
+                        const promoBadge = this.promoBadgeHTML(x);
+                        const shownPrice = promo.price;
+                        return `
+                            <div class="relative flex flex-row gap-3 sm:gap-4 p-2.5 sm:p-3 bg-white dark:bg-gray-900 rounded-[20px] border border-gray-100 dark:border-gray-800 hover-card-lift shadow-sm cursor-pointer" onclick="PublicUI.openProduct('${x.id}')">
+                                <div class="w-[84px] h-[84px] sm:w-[94px] sm:h-[94px] relative rounded-[14px] overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-800">
+                                    ${promoBadge}
+                                    <img src="${Utils.sanitizeURL(imgSrc)}" class="w-full h-full object-cover" loading="lazy">
+                                </div>
+                                <div class="flex flex-col flex-1 justify-center min-w-0 py-0.5 pr-1">
+                                    <h3 class="font-extrabold text-main text-[13.5px] sm:text-[14.5px] leading-snug mb-1.5 whitespace-normal break-words">${Utils.escapeHTML(x.name)}</h3>
+                                    <div class="mt-0.5 flex items-center flex-wrap">
+                                        ${origPrice}
+                                        <div class="font-black text-primary text-[14.5px] sm:text-[15.5px] tracking-tight leading-none">${Utils.formatRp(shownPrice)}</div>
+                                    </div>
+                                </div>
+                            </div>`;
+                    }).join('');
+                }
+            },
+
+            handleSearch(val) {
+                clearTimeout(this.searchTimeout);
+                this.searchTimeout = setTimeout(() => {
+                    const q = val.trim();
+                    const btnClr = document.getElementById('searchClearBtn'); const dd = document.getElementById('searchDropdown');
+                    const list = document.getElementById('searchList'); const kw = document.getElementById('searchKeyword'); const cnt = document.getElementById('searchCount');
+
+                    if(q.length > 0) {
+                        btnClr.classList.remove('hidden'); dd.classList.remove('hidden'); dd.classList.add('flex'); kw.textContent = q;
+                        const p = this.searchProducts(q);
+                        cnt.textContent = `${p.length} produk`;
+
+                        if(p.length > 0) {
+                            list.innerHTML = p.map(x => {
+                                const catObj = (State.public.categories||[]).find(c => c.id === x.category_id); const catName = catObj ? catObj.name : 'Produk';
+                                const imgSrc = (x.images && x.images.length > 0) ? x.images[0] : Utils.placeholder;
+                                const promo = this.promoInfo(x);
+                                const origPrice = (promo.active && promo.discount) ? `<div class="text-mute text-[11px] line-through font-medium leading-none mr-1.5 shrink-0">${Utils.formatRp(x.original_price)}</div>` : '';
+                                const promoInline = promo.active && promo.discount ? `<span class="rounded-full bg-rose-500 px-2 py-0.5 text-[9px] font-extrabold text-white">${Utils.escapeHTML(promo.label)}</span>` : '';
+                                const shownPrice = promo.price;
+                                return `
+                                <div class="flex items-center gap-3 p-3.5 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors bg-white dark:bg-gray-900" onclick="PublicUI.clickSearchResult('${x.id}')">
+                                    <img src="${Utils.sanitizeURL(imgSrc)}" class="w-11 h-11 rounded-xl object-cover bg-gray-50 dark:bg-gray-800 shrink-0 border border-gray-100 dark:border-gray-800">
+                                    <div class="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+                                        <h4 class="font-bold text-main text-[12.5px] leading-tight truncate">${Utils.escapeHTML(x.name)}</h4>
+                                        <div class="flex items-center gap-2 mt-0.5">
+                                            <div class="flex items-center flex-wrap">
+                                                ${origPrice}
+                                                <div class="text-[11.5px] font-extrabold text-primary">${Utils.formatRp(shownPrice)}</div>
+                                            </div>
+                                            ${promoInline}
+                                            <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-bold whitespace-nowrap ml-auto">${Utils.escapeHTML(catName)}</span>
+                                        </div>
+                                    </div>
+                                    <i class="ph ph-caret-right text-[14px] text-gray-300 dark:text-gray-600 shrink-0"></i>
+                                </div>`;
+                            }).join('');
+                        } else { list.innerHTML = `<div class="p-6 text-center text-mute text-[12px] bg-white dark:bg-gray-900 flex flex-col items-center justify-center"><i class="ph ph-package text-[28px] mb-1.5 text-gray-300 dark:text-gray-600"></i>Tidak ditemukan.</div>`; }
+                    } else this.clearSearch();
+                }, 200);
+            },
+            clearSearch() {
+                const s = document.getElementById('searchInput'); const btnClr = document.getElementById('searchClearBtn'); const dd = document.getElementById('searchDropdown');
+                if(s) s.value = ''; if(btnClr) btnClr.classList.add('hidden'); if(dd) { dd.classList.add('hidden'); dd.classList.remove('flex'); }
+                if(this.query !== '') { this.query = ''; this.renderBan(); this.renderQuickMenuCard(); this.renderCat(); this.renderPopular(); this.renderProd(); }
+            },
+            clickSearchResult(id) { document.getElementById('searchDropdown').classList.add('hidden'); this.openProduct(id); },
+            applySearch() {
+                const val = document.getElementById('searchInput').value; this.query = val.trim();
+                document.getElementById('searchDropdown').classList.add('hidden'); this.cat = 'Semua';
+                this.renderBan(); this.renderQuickMenuCard(); this.renderPopular(); this.renderProd();
+            },
+
+            renderInfo() {
+                const st = State.public.store || {};
+                const nm = document.getElementById('pub-name'); const tg = document.getElementById('pub-tagline'); const wa = document.getElementById('wa-button');
+                if (nm) nm.textContent = st.store_name || "MIR Digital Store"; 
+                if (tg) tg.textContent = st.store_tagline || "";
+                if (wa) {
+                    if(st.whatsapp_number) {
+                        const cleanWa = String(st.whatsapp_number).replace(/\D/g, '');
+                        let waUrl = `https://wa.me/${cleanWa}`;
+                        if (st.whatsapp_message && st.whatsapp_message.trim() !== '') {
+                            const cleanMsg = st.whatsapp_message.replace(/\[nama_produk\]/gi, st.store_name || 'Toko').replace(/\[harga\]/gi, '');
+                            waUrl += `?text=${encodeURIComponent(cleanMsg.trim())}`;
+                        }
+                        wa.href = waUrl;
+                        wa.classList.remove('hidden');
+                    } else {
+                        wa.classList.add('hidden');
+                    }
+                }
+                Theme.apply(document.documentElement.classList.contains('dark'));
+            },
+
+            renderBan() {
+                const w = document.getElementById('bannerWrapper'); const c = document.getElementById('bannerContainer'); const d = document.getElementById('bannerDots');
+                if (!w || !c || !d) return; const b = (State.public.banners || []).filter(x => x.status !== 'inactive'); clearInterval(this.bannerInterval);
+                if (b.length > 0 && this.cat === 'Semua' && !this.query) {
+                    w.classList.remove('hidden');
+                    c.innerHTML = b.map((x, i) => {
+                        let clickAction = '';
+                        if(x.target_url && x.target_url !== 'none') {
+                            const isCat = (State.public.categories || []).find(z => z.name === x.target_url);
+                            if (isCat) clickAction = `PublicUI.openCategoryPage('${Utils.escapeHTML(x.target_url)}')`;
+                            else if (x.target_url.startsWith('PRD-') || (State.public.products || []).some(p => p.id === x.target_url)) clickAction = `PublicUI.openProduct('${Utils.escapeHTML(x.target_url)}')`;
+                            else clickAction = `window.open('${Utils.sanitizeURL(x.target_url)}', '_blank')`;
+                        }
+                        return `<div class="snap-center shrink-0 w-full rounded-[20px] sm:rounded-[26px] relative overflow-hidden flex items-center shadow-sm cursor-pointer bg-gray-50 dark:bg-gray-800 carousel-item" ${clickAction ? `onclick="${clickAction}"` : ''} data-index="${i}">
+                            <img src="${Utils.sanitizeURL(x.image_url)}" class="w-full aspect-[21/9] sm:aspect-[21/7] object-cover" loading="lazy">
+                        </div>`;
+                    }).join('');
+                    
+                    d.innerHTML = b.map((_, i) => `<button onclick="PublicUI.scrollBanTo(${i})" class="h-1.5 rounded-full bg-white/50 transition-all duration-300" data-dot="${i}"></button>`).join('');
+                    this.updateBanDots();
+                    
+                    c.onscroll = () => this.updateBanDots();
+                    if (b.length > 1) {
+                        this.bannerInterval = setInterval(() => {
+                            if (!c) return clearInterval(this.bannerInterval);
+                            if (c.scrollLeft + c.clientWidth >= c.scrollWidth - 10) c.scrollTo({left:0, behavior:'smooth'});
+                            else c.scrollBy({left: c.clientWidth, behavior:'smooth'});
+                        }, 5000); 
+                    }
+                } else w.classList.add('hidden');
+            },
+            updateBanDots() {
+                const c = document.getElementById('bannerContainer'); const dots = document.querySelectorAll('[data-dot]');
+                if(!c || dots.length === 0) return;
+                let idx = Math.round(c.scrollLeft / c.clientWidth); if(idx >= dots.length) idx = dots.length - 1;
+                dots.forEach((dot, i) => {
+                    if(i === idx) { dot.classList.remove('w-1.5', 'bg-white/50'); dot.classList.add('w-4', 'bg-white'); } 
+                    else { dot.classList.add('w-1.5', 'bg-white/50'); dot.classList.remove('w-4', 'bg-white'); }
+                });
+            },
+            scrollBanTo(idx) { const c = document.getElementById('bannerContainer'); if(c) { clearInterval(this.bannerInterval); c.scrollTo({left: c.clientWidth * idx, behavior: 'smooth'}); } },
+
+            renderCat() {
+                const w = document.getElementById('catWrap'); const c = document.getElementById('categoryContainer'); if (!w || !c) return;
+                const cats = [{name: 'Semua'}, ...((State.public.categories || []).filter(x => x.status !== 'inactive'))];
+                
+                if (cats.length > 1 && !this.query) {
+                    w.classList.remove('hidden');
+                    c.innerHTML = cats.map(x => {
+                        const act = x.name.toLowerCase() === this.cat.toLowerCase();
+                        const cls = act 
+                            ? "bg-primary text-white font-bold shadow-[0_3px_10px_rgba(8,102,255,0.22)] border-primary" 
+                            : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-primary/50 font-semibold";
+                        return `<button onclick="PublicUI.setCat('${Utils.escapeHTML(x.name)}')" class="px-2.5 py-1 rounded-full border text-[10.5px] whitespace-nowrap transition-all duration-200 ${cls}">${Utils.escapeHTML(x.name)}</button>`;
+                    }).join('');
+                } else w.classList.add('hidden');
+            },
+            setCat(c) { 
+                this.cat = c; 
+                this.renderCat(); this.renderBan(); this.renderQuickMenuCard(); this.renderPopular(); 
+                this.renderSkeleton();
+                clearTimeout(this.catTimer);
+                this.catTimer = setTimeout(() => { this.renderProd(true); }, 180);
+            },
+
+            renderPopular() {
+                const w = document.getElementById('popularSection'); const g = document.getElementById('popularGrid'); if(!w || !g) return;
+                const pop = (State.public.products || []).filter(p => p.is_popular === true || p.is_popular === 'true').slice(0, 5);
+                
+                if (pop.length > 0 && this.cat === 'Semua' && !this.query) {
+                    w.classList.remove('hidden');
+                    g.innerHTML = pop.map((x) => {
+                        const imgSrc = (x.images && x.images.length > 0) ? x.images[0] : Utils.placeholder;
+                        const promo = this.promoInfo(x);
+                        const origPrice = (promo.active && promo.discount) ? `<div class="text-mute text-[11px] line-through font-medium leading-none mr-1.5 shrink-0">${Utils.formatRp(x.original_price)}</div>` : '';
+                        const promoBadge = this.promoBadgeHTML(x);
+                        const shownPrice = promo.price;
+
+                        return `
+                        <div class="snap-start shrink-0 w-[138px] sm:w-[155px] relative rounded-[20px] overflow-hidden border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 cursor-pointer hover-card-lift flex flex-col shadow-sm" onclick="PublicUI.openProduct('${x.id}')">
+                            <div class="w-full aspect-square relative bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-800 p-1.5">
+                                ${promoBadge}
+                                <img src="${Utils.sanitizeURL(imgSrc)}" class="w-full h-full object-cover rounded-[14px]">
+                            </div>
+                            <div class="p-3 flex flex-col flex-1">
+                                <h3 class="text-main font-bold text-[11.5px] sm:text-[12px] leading-snug mb-1.5 line-clamp-2">${Utils.escapeHTML(PublicUI.truncateWords(x.name, 10))}</h3>
+                                <div class="mt-auto flex items-center flex-wrap pt-1">
+                                    ${origPrice}
+                                    <div class="text-primary font-extrabold text-[13px] tracking-tight leading-none">${Utils.formatRp(shownPrice)}</div>
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('');
+                } else w.classList.add('hidden');
+            },
+
+            toggleView(mode) {
+                if(this.viewMode === mode) return;
+                this.viewMode = mode;
+                localStorage.setItem('mir_view_mode', this.viewMode);
+                
+                const gridBtn = document.getElementById('btn-view-grid');
+                const listBtn = document.getElementById('btn-view-list');
+                if(mode === 'grid') {
+                    gridBtn.classList.replace('text-mute', 'bg-gray-100'); gridBtn.classList.add('dark:bg-gray-800', 'text-primary', 'shadow-sm');
+                    listBtn.classList.replace('bg-gray-100', 'text-mute'); listBtn.classList.remove('dark:bg-gray-800', 'text-primary', 'shadow-sm');
+                } else {
+                    listBtn.classList.replace('text-mute', 'bg-gray-100'); listBtn.classList.add('dark:bg-gray-800', 'text-primary', 'shadow-sm');
+                    gridBtn.classList.replace('bg-gray-100', 'text-mute'); gridBtn.classList.remove('dark:bg-gray-800', 'text-primary', 'shadow-sm');
+                }
+
+                this.renderSkeleton();
+                clearTimeout(this.viewTimer);
+                this.viewTimer = setTimeout(() => { this.renderProd(true); }, 200);
+            },
+
+            renderSkeleton() {
+                const grid = document.getElementById('productGrid');
+                if (!grid) return;
+                
+                let skelHtml = '';
+                const limit = this.viewMode === 'grid' ? 4 : 3; 
+                for (let i = 0; i < limit; i++) {
+                    if (this.viewMode === 'grid') {
+                        skelHtml += `<div class="bg-white dark:bg-gray-900 rounded-[20px] border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col shadow-sm"><div class="w-full aspect-square skeleton-box border-b border-gray-100 dark:border-gray-800"></div><div class="p-3.5 flex flex-col gap-2"><div class="h-3.5 w-3/4 rounded skeleton-box mb-1"></div><div class="h-4 w-1/2 rounded skeleton-box mt-auto"></div></div></div>`;
+                    } else {
+                        skelHtml += `<div class="bg-white dark:bg-gray-900 rounded-[20px] border border-gray-100 dark:border-gray-800 p-3 flex flex-row gap-3.5 items-center shadow-sm"><div class="w-[84px] h-[84px] rounded-[14px] skeleton-box shrink-0"></div><div class="flex flex-col flex-1 gap-2"><div class="h-3.5 w-3/4 rounded skeleton-box"></div><div class="h-4 w-1/3 rounded skeleton-box"></div></div></div>`;
+                    }
+                }
+                grid.className = this.viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-4' : 'flex flex-col gap-3';
+                grid.innerHTML = skelHtml;
+                grid.classList.remove('hidden'); document.getElementById('emptyState')?.classList.add('hidden');
+            },
+
+            renderProd(animate = false) {
+                const grid = document.getElementById('productGrid');
+                const emp = document.getElementById('emptyState');
+                const t = document.getElementById('sectionTitle');
+                const seeAllBtn = document.getElementById('btn-see-all-cat');
+                const moreWrap = document.getElementById('moreProductsWrap');
+                if (!grid) return;
+
+                let p = State.public.products || [];
+                
+                if (this.query) { 
+                    p = this.searchProducts(this.query);
+                    document.getElementById('bannerWrapper')?.classList.add('hidden');
+                    document.getElementById('quickMenuCardWrap')?.classList.add('hidden');
+                    document.getElementById('catWrap')?.classList.add('hidden');
+                    document.getElementById('popularSection')?.classList.add('hidden');
+                    t.innerHTML = `Hasil Pencarian <div class="w-2.5 h-1 bg-primary/30 rounded-full"></div>`;
+                    seeAllBtn?.classList.add('hidden');
+                    moreWrap?.classList.add('hidden');
+                } else if (this.cat !== 'Semua') { 
+                    p = p.filter(x => { const c = (State.public.categories||[]).find(z => z.id === x.category_id); return c && c.name.toLowerCase() === this.cat.toLowerCase(); }); 
+                    t.innerHTML = `${Utils.escapeHTML(this.cat)} <div class="w-2.5 h-1 bg-primary/30 rounded-full"></div>`;
+                } else {
+                    t.innerHTML = `Katalog Produk <div class="w-2.5 h-1 bg-primary/30 rounded-full"></div>`;
+                }
+
+                const totalMatched = p.length;
+                if (!this.query) {
+                    if (this.cat !== 'Semua' && totalMatched > 0) {
+                        seeAllBtn?.classList.remove('hidden');
+                    } else if (totalMatched > 5) {
+                        seeAllBtn?.classList.remove('hidden');
+                    } else {
+                        seeAllBtn?.classList.add('hidden');
+                    }
+                    if (totalMatched > 5) {
+                        p = p.slice(0, 5);
+                        moreWrap?.classList.remove('hidden');
+                    } else {
+                        moreWrap?.classList.add('hidden');
+                    }
+                }
+                
+                const gridBtn = document.getElementById('btn-view-grid'); const listBtn = document.getElementById('btn-view-list');
+                if(this.viewMode === 'grid') { gridBtn?.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-primary', 'shadow-sm'); gridBtn?.classList.remove('text-mute'); listBtn?.classList.replace('bg-gray-100', 'text-mute'); listBtn?.classList.remove('dark:bg-gray-800', 'text-primary', 'shadow-sm'); } 
+                else { listBtn?.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-primary', 'shadow-sm'); listBtn?.classList.remove('text-mute'); gridBtn?.classList.replace('bg-gray-100', 'text-mute'); gridBtn?.classList.remove('dark:bg-gray-800', 'text-primary', 'shadow-sm'); }
+                
+                if (p.length > 0) {
+                    let cardsHtml = '';
+                    p.forEach((x, i) => {
+                        const imgSrc = (x.images && x.images.length > 0) ? x.images[0] : Utils.placeholder;
+                        const promo = this.promoInfo(x);
+                        const origPrice = (promo.active && promo.discount) ? `<div class="text-mute text-[11px] line-through font-medium leading-none mr-1.5 shrink-0">${Utils.formatRp(x.original_price)}</div>` : '';
+                        const promoBadge = this.promoBadgeHTML(x);
+                        const shownPrice = promo.price;
+                        const animClass = animate ? 'animate-pop-in' : '';
+                        const delayStyle = animate ? `style="animation-delay: ${i * 0.05}s"` : '';
+                        
+                        if (this.viewMode === 'grid') {
+                            cardsHtml += `
+                            <div id="prod-card-${x.id}" class="bg-white dark:bg-gray-900 rounded-[20px] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden cursor-pointer hover-card-lift flex flex-col relative ${animClass}" ${delayStyle} onclick="PublicUI.openProduct('${x.id}')">
+                                <div class="w-full aspect-square bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-800 relative overflow-hidden p-1.5">
+                                    ${promoBadge}
+                                    <img src="${Utils.sanitizeURL(imgSrc)}" class="w-full h-full object-cover rounded-[14px]" loading="lazy">
+                                </div>
+                                <div class="p-3 sm:p-3.5 flex flex-col flex-1 justify-between">
+                                    <h3 class="font-bold text-main text-[12.5px] sm:text-[13px] leading-snug mb-2 line-clamp-2">${Utils.escapeHTML(PublicUI.truncateWords(x.name, 10))}</h3>
+                                    <div class="mt-auto pt-1 flex items-center flex-wrap">
+                                        ${origPrice}
+                                        <div class="font-extrabold text-primary text-[14px] sm:text-[15px] tracking-tight leading-none">${Utils.formatRp(shownPrice)}</div>
+                                    </div>
+                                </div>
+                            </div>`;
+                        } else {
+                            cardsHtml += `
+                            <div id="prod-card-${x.id}" class="relative flex flex-row gap-3 sm:gap-4 p-2.5 sm:p-3 bg-white dark:bg-gray-900 rounded-[20px] border border-gray-100 dark:border-gray-800 hover-card-lift shadow-sm cursor-pointer ${animClass}" ${delayStyle} onclick="PublicUI.openProduct('${x.id}')">
+                                <div class="w-[86px] h-[86px] sm:w-[96px] sm:h-[96px] relative rounded-[14px] overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-800">
+                                    ${promoBadge}
+                                    <img src="${Utils.sanitizeURL(imgSrc)}" class="w-full h-full object-cover" loading="lazy">
+                                </div>
+                                <div class="flex flex-col flex-1 justify-center min-w-0 py-0.5 pr-1">
+                                    <h3 class="font-extrabold text-main text-[13.5px] sm:text-[14.5px] leading-snug mb-1.5 whitespace-normal break-words">${Utils.escapeHTML(x.name)}</h3>
+                                    <div class="mt-0.5 flex items-center flex-wrap">
+                                        ${origPrice}
+                                        <div class="font-black text-primary text-[14.5px] sm:text-[15.5px] tracking-tight leading-none">${Utils.formatRp(shownPrice)}</div>
+                                    </div>
+                                </div>
+                            </div>`;
+                        }
+                    });
+                    grid.className = this.viewMode === 'grid' ? 'grid grid-cols-2 gap-3 sm:gap-4' : 'flex flex-col gap-3';
+                    grid.innerHTML = cardsHtml; grid.classList.remove('hidden'); emp.classList.add('hidden');
+                } else { 
+                    grid.classList.add('hidden'); emp.classList.remove('hidden');
+                    moreWrap?.classList.add('hidden');
+                }
+            },
+
+            openProduct(id, pushState = true) {
+                const p = (State.public.products || []).find(x => x.id === id); 
+                if(!p) { Notify.show('Produk tidak ditemukan', 'error'); if(pushState) Router.navigate('/', true); return; }
+                
+                const imgContainer = document.getElementById('dt-img-container');
+                const prevBtn = document.getElementById('dt-prev-btn');
+                const nextBtn = document.getElementById('dt-next-btn');
+                const dotsContainer = document.getElementById('dt-dots-container');
+                
+                imgContainer.innerHTML = ''; dotsContainer.innerHTML = '';
+                
+                const images = (p.images && p.images.length > 0) ? p.images : [Utils.placeholder];
+                this.currentDetailImages = images;
+                this.currentDetailName = p.name;
+                this.lbIndex = 0;
+                
+                images.forEach((imgSrc, i) => {
+                    imgContainer.innerHTML += `
+                        <div onclick="PublicUI.openImagePreview(${i})" class="carousel-item w-full h-full shrink-0 flex items-center justify-center p-2 cursor-zoom-in">
+                            <img src="${Utils.sanitizeURL(imgSrc)}" class="max-w-full max-h-full object-contain">
+                        </div>`;
+                    if (images.length > 1) {
+                        dotsContainer.innerHTML += `<button onclick="PublicUI.scrollToDetailImage(${i})" class="h-1.5 w-1.5 rounded-full bg-gray-800 dark:bg-white opacity-30 transition-all duration-300" data-dt-dot="${i}"></button>`;
+                    }
+                });
+
+                if (images.length > 1) {
+                    prevBtn.classList.remove('hidden'); nextBtn.classList.remove('hidden'); dotsContainer.classList.remove('hidden');
+                    this.updateDetailDots();
+                    imgContainer.onscroll = () => this.updateDetailDots();
+                } else {
+                    prevBtn.classList.add('hidden'); nextBtn.classList.add('hidden'); dotsContainer.classList.add('hidden');
+                }
+
+                const catObj = (State.public.categories || []).find(c => c.id === p.category_id);
+                const catBadge = document.getElementById('dt-cat-badge');
+                if (catBadge) catBadge.textContent = catObj ? catObj.name : 'Produk Digital';
+
+                document.getElementById('dt-title').textContent = p.name;
+                
+                const promoInfo = this.promoInfo(p);
+                const op = document.getElementById('dt-orig-price');
+                if(promoInfo.active && promoInfo.discount) { op.textContent = Utils.formatRp(p.original_price); op.classList.remove('hidden'); } else { op.classList.add('hidden'); }
+                document.getElementById('dt-price').textContent = Utils.formatRp(promoInfo.price);
+                const promoBox = document.getElementById('dt-promo-box');
+                if (promoInfo.active && promoInfo.discount) {
+                    promoBox.classList.remove('hidden');
+                    document.querySelector('#dt-promo-label span').textContent = promoInfo.label;
+                    document.getElementById('dt-promo-countdown').innerHTML = promoInfo.end
+                        ? `<span data-promo-countdown data-promo-end="${promoInfo.end}" class="tabular-nums">--:--:--</span>`
+                        : '<span class="text-[12px] tracking-normal font-bold">Promo tersedia</span>';
+                    document.getElementById('dt-promo-end-date').textContent = promoInfo.end
+                        ? `Sampai ${new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(promoInfo.end))}`
+                        : 'Waktu promo belum dibatasi';
+                } else promoBox.classList.add('hidden');
+                document.getElementById('dt-desc').innerHTML = this.parseMD(p.description);
+                
+                // Produk Lainnya Secara Random & Ukuran Kecil
+                const relatedWrap = document.getElementById('dt-related-wrap');
+                const relatedList = document.getElementById('dt-related-list');
+                const otherProducts = (State.public.products || []).filter(item => item.id !== p.id);
+                if (otherProducts.length > 0 && relatedWrap && relatedList) {
+                    const shuffled = [...otherProducts].sort(() => 0.5 - Math.random()).slice(0, 4);
+                    relatedWrap.classList.remove('hidden');
+                    relatedList.innerHTML = shuffled.map(rp => {
+                        const rImg = (rp.images && rp.images.length > 0) ? rp.images[0] : Utils.placeholder;
+                        const rPromo = PublicUI.promoInfo(rp);
+                        const rOrig = (rPromo.active && rPromo.discount)
+                            ? `<span class="text-mute text-[9px] line-through mr-1">${Utils.formatRp(rp.original_price)}</span>` : '';
+                        return `
+                            <div onclick="PublicUI.openProduct('${rp.id}', true)" class="flex items-center gap-2 p-2 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40 hover:border-primary/50 cursor-pointer transition-all">
+                                <img src="${Utils.sanitizeURL(rImg)}" class="w-11 h-11 rounded-lg object-cover shrink-0 bg-white border border-gray-100 dark:border-gray-700">
+                                <div class="flex-1 min-w-0">
+                                    <h5 class="text-[11px] font-bold text-main line-clamp-2 leading-tight mb-0.5">${Utils.escapeHTML(PublicUI.truncateWords(rp.name, 8))}</h5>
+                                    <div class="flex items-center flex-wrap">
+                                        ${rOrig}
+                                        <span class="text-[11px] font-extrabold text-primary leading-none">${Utils.formatRp(rPromo.price)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else if (relatedWrap) {
+                    relatedWrap.classList.add('hidden');
+                }
+
+                // Tombol Demo Opsional (Tampil hanya jika ada demo_url)
+                const demoBtn = document.getElementById('dt-btn-demo');
+                const cleanDemoUrl = (p.demo_url || '').trim();
+                if (cleanDemoUrl !== '' && cleanDemoUrl !== '#') {
+                    demoBtn.classList.remove('hidden');
+                    demoBtn.classList.add('flex');
+                    demoBtn.onclick = () => window.open(Utils.sanitizeURL(cleanDemoUrl), '_blank');
+                } else {
+                    demoBtn.classList.add('hidden');
+                    demoBtn.classList.remove('flex');
+                    demoBtn.onclick = null;
+                }
+                
+                document.getElementById('dt-btn-buy').onclick = () => {
+                    const st = State.public.store || {};
+                    const buyUrl = (p.purchase_url || '').trim();
+                    if(buyUrl && buyUrl !== '#' && !buyUrl.includes('wa.me/')) {
+                        window.open(Utils.sanitizeURL(buyUrl), '_blank');
+                    } else if (st.whatsapp_number) {
+                        const cleanWa = String(st.whatsapp_number).replace(/\D/g, '');
+                        let msg = st.whatsapp_message || '';
+                        if (msg && msg.trim() !== '') {
+                            msg = msg.replace(/\[nama_produk\]/gi, p.name)
+                                     .replace(/\[harga\]/gi, Utils.formatRp(promoInfo.price));
+                            window.open(`https://wa.me/${cleanWa}?text=${encodeURIComponent(msg)}`, '_blank');
+                        } else {
+                            window.open(`https://wa.me/${cleanWa}`, '_blank');
+                        }
+                    } else if (buyUrl) {
+                        window.open(Utils.sanitizeURL(buyUrl), '_blank');
+                    }
+                };
+
+                const w = document.getElementById('detail-modal'); const b = document.getElementById('detail-box');
+                w.classList.remove('hidden'); w.classList.add('flex'); void w.offsetWidth;
+                b.classList.replace('translate-y-full', 'translate-y-0');
+
+                const scrollArea = document.getElementById('detail-scroll-area');
+                if (scrollArea) scrollArea.scrollTo({ top: 0, behavior: 'smooth' });
+                imgContainer.scrollTo({ left: 0 });
+
+                if (pushState) { 
+                    const productPath = '/product/' + id;
+                    Router.safePushState(productPath, false);
+                    try { history.replaceState({ ...(history.state || {}), path: productPath, mirPreviousPath: Router.current || '/' }, '', productPath); } catch(e) {}
+                    Router.current = '/product/' + id; 
+                }
+            },
+            
+            scrollDetailImage(direction) {
+                const c = document.getElementById('dt-img-container');
+                if(c) c.scrollBy({ left: c.clientWidth * direction, behavior: 'smooth' });
+            },
+            scrollToDetailImage(idx) {
+                const c = document.getElementById('dt-img-container');
+                if(c) c.scrollTo({ left: c.clientWidth * idx, behavior: 'smooth' });
+            },
+            updateDetailDots() {
+                const c = document.getElementById('dt-img-container'); const dots = document.querySelectorAll('[data-dt-dot]');
+                if(!c || dots.length === 0) return;
+                let idx = Math.round(c.scrollLeft / c.clientWidth); if(idx >= dots.length) idx = dots.length - 1;
+                this.lbIndex = idx;
+                dots.forEach((dot, i) => {
+                    if(i === idx) { dot.classList.remove('w-1.5', 'opacity-30'); dot.classList.add('w-5', 'opacity-100'); } 
+                    else { dot.classList.add('w-1.5', 'opacity-30'); dot.classList.remove('w-5', 'opacity-100'); }
+                });
+            },
+
+            openImagePreview(startIndex) {
+                if (!this.currentDetailImages || this.currentDetailImages.length === 0) return;
+                if (typeof startIndex === 'number') this.lbIndex = startIndex;
+                this.lbZoom = 1;
+
+                const lb = document.getElementById('img-lightbox');
+                const nameEl = document.getElementById('lb-product-name');
+                if (!lb || !nameEl) return;
+
+                nameEl.textContent = this.currentDetailName || '';
+                this.renderLightboxSlide();
+                lb.classList.remove('hidden');
+                lb.classList.add('flex');
+            },
+
+            closeImagePreview() {
+                const lb = document.getElementById('img-lightbox');
+                if (!lb || lb.classList.contains('hidden')) return;
+                this.lbZoom = 1;
+                lb.classList.add('hidden');
+                lb.classList.remove('flex');
+            },
+
+            renderLightboxSlide() {
+                const imgEl = document.getElementById('lb-img');
+                const prevEl = document.getElementById('lb-prev');
+                const nextEl = document.getElementById('lb-next');
+                const dotsEl = document.getElementById('lb-dots');
+                if (!imgEl) return;
+
+                const imgs = this.currentDetailImages;
+                if (this.lbIndex < 0) this.lbIndex = imgs.length - 1;
+                if (this.lbIndex >= imgs.length) this.lbIndex = 0;
+
+                this.lbZoom = 1;
+                imgEl.style.transform = `scale(1)`;
+                imgEl.src = Utils.sanitizeURL(imgs[this.lbIndex]);
+
+                if (imgs.length > 1) {
+                    prevEl.classList.remove('hidden');
+                    nextEl.classList.remove('hidden');
+                    dotsEl.innerHTML = imgs.map((_, i) => `<button onclick="PublicUI.goToLightboxImage(${i})" class="h-1.5 rounded-full transition-all ${i === this.lbIndex ? 'w-5 bg-white' : 'w-1.5 bg-white/40'}"></button>`).join('');
+                } else {
+                    prevEl.classList.add('hidden');
+                    nextEl.classList.add('hidden');
+                    dotsEl.innerHTML = '';
+                }
+            },
+
+            stepLightboxImage(dir) {
+                this.lbIndex += dir;
+                this.renderLightboxSlide();
+            },
+
+            goToLightboxImage(idx) {
+                this.lbIndex = idx;
+                this.renderLightboxSlide();
+            },
+
+            zoomLightbox(delta) {
+                const imgEl = document.getElementById('lb-img');
+                if (!imgEl) return;
+                this.lbZoom = Math.min(3.5, Math.max(1, this.lbZoom + delta));
+                imgEl.style.transform = `scale(${this.lbZoom})`;
+            },
+
+            toggleDoubleTapZoom() {
+                const imgEl = document.getElementById('lb-img');
+                if (!imgEl) return;
+                this.lbZoom = this.lbZoom > 1 ? 1 : 2.2;
+                imgEl.style.transform = `scale(${this.lbZoom})`;
+            },
+
+            initLightboxGestures() {
+                const area = document.getElementById('lb-touch-area');
+                if (!area) return;
+                let startX = 0;
+                area.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 1) startX = e.touches[0].clientX;
+                }, { passive: true });
+                area.addEventListener('touchend', (e) => {
+                    if (this.lbZoom > 1) return;
+                    if (e.changedTouches.length === 1) {
+                        const diffX = e.changedTouches[0].clientX - startX;
+                        if (Math.abs(diffX) > 45 && this.currentDetailImages.length > 1) {
+                            this.stepLightboxImage(diffX < 0 ? 1 : -1);
+                        }
+                    }
+                }, { passive: true });
+            },
+
+            closeDetail(pushState = true) {
+                const w = document.getElementById('detail-modal'); const b = document.getElementById('detail-box');
+                if (!w || w.classList.contains('hidden')) return; 
+                b.classList.replace('translate-y-0', 'translate-y-full');
+                setTimeout(() => { w.classList.remove('flex'); w.classList.add('hidden'); }, 260);
+                
+                if (pushState) {
+                    if (Router.current && Router.current.startsWith('/product/') && history.state?.mirPreviousPath) {
+                        history.back();
+                    } else {
+                        const isCatPageOpen = !document.getElementById('category-full-modal')?.classList.contains('hidden');
+                        const backRoute = isCatPageOpen ? `/category/${encodeURIComponent(this.activeCatPageFilter)}` : '/';
+                        Router.safePushState(backRoute, true);
+                        Router.current = backRoute;
+                    }
+                }
+            },
+
+            renderFlyer() {
+                const s = State.public.store || {}; const modal = document.getElementById('flyer-modal'); if (!modal) return;
+                if (s.popup_status === 'active' && s.popup_image_url && !sessionStorage.getItem('flyer_shown')) {
+                    document.getElementById('flyer-img').src = Utils.sanitizeURL(s.popup_image_url);
+                    document.getElementById('flyer-link').href = Utils.sanitizeURL(s.popup_target_url || '#');
+                    if (!s.popup_target_url) document.getElementById('flyer-link').onclick = (e) => e.preventDefault();
+                    modal.classList.remove('hidden'); modal.classList.add('flex'); sessionStorage.setItem('flyer_shown', 'true');
+                }
+            },
+            closeFlyer() { document.getElementById('flyer-modal').classList.remove('flex'); document.getElementById('flyer-modal').classList.add('hidden'); }
+        };
+
+        const AdminAuth = {
+            async doLogin(e) {
+                e.preventDefault();
+                const card = document.getElementById('auth-card');
+                const u = document.getElementById('log-user')?.value.trim() || '';
+                const p = document.getElementById('log-pass')?.value || '';
+                const startedAt = Date.now();
+                if (card) card.innerHTML = `<div class="w-12 h-12 rounded-[16px] skeleton-box mx-auto mb-3.5"></div><div class="h-5 w-36 rounded-md skeleton-box mx-auto mb-6"></div><div class="space-y-4 text-left"><div><div class="h-3 w-16 rounded skeleton-box mb-2"></div><div class="h-11 rounded-xl skeleton-box"></div></div><div><div class="h-3 w-16 rounded skeleton-box mb-2"></div><div class="h-11 rounded-xl skeleton-box"></div></div><div class="h-12 rounded-xl skeleton-box mt-4"></div></div><div class="h-4 w-40 rounded skeleton-box mx-auto mt-6"></div><p class="sr-only" role="status">Memeriksa akun admin</p>`;
+                const [res] = await Promise.all([
+                    API.req('login', { username: u, password: p }),
+                    new Promise(resolve => setTimeout(resolve, Math.max(0, 850 - (Date.now() - startedAt))))
+                ]);
+                if (res.success && res.data?.token) {
+                    sessionStorage.setItem('mir_admin_token', res.data.token);
+                    sessionStorage.setItem('mir_admin_name', res.data.user?.name || 'Admin');
+                    Notify.show('Login berhasil', 'success');
+                    Router.navigate('/admin/dashboard');
+                } else {
+                    Router.load('/admin/login');
+                    const userEl = document.getElementById('log-user');
+                    if (userEl) userEl.value = u;
+                    Notify.show(res.message || "Gagal login", 'error');
+                }
+            },
+            logout(force=false) {
+                if (!force) API.req('logout');
+                sessionStorage.removeItem('mir_admin_token');
+                sessionStorage.removeItem('mir_admin_name');
+                Dash.data = null; Dash.currentView = 'overview'; Router.dashCached = false;
+                Router.navigate('/'); Notify.show("Berhasil keluar.", "info");
+            }
+        };
+
+        const Modal = {
+            open(title, html) { 
+                document.getElementById('modal-title').textContent = Utils.escapeHTML(title); document.getElementById('modal-body').innerHTML = html; 
+                const w = document.getElementById('modal-wrap'); const b = document.getElementById('modal-box');
+                w.classList.remove('hidden'); w.classList.add('flex'); void w.offsetWidth;
+                w.classList.replace('opacity-0', 'opacity-100'); b.classList.replace('scale-95', 'scale-100');
+            },
+            close() { 
+                const w = document.getElementById('modal-wrap'); const b = document.getElementById('modal-box');
+                w.classList.replace('opacity-100', 'opacity-0'); b.classList.replace('scale-100', 'scale-95');
+                setTimeout(() => { w.classList.remove('flex'); w.classList.add('hidden'); }, 250);
+            }
+        };
+
+        const Dash = {
+            data: null, currentView: 'overview', imgCounter: 0,
+            selectedIds: new Set(),
+            
+            async init() {
+                const adminName = sessionStorage.getItem('mir_admin_name') || 'Admin';
+                const av = document.getElementById('dashAdminAv'); if (av) av.textContent = adminName.charAt(0).toUpperCase();
+                if (Router.dashCached && this.data) return;
+
+                const res = await API.req('getAdminDashboard');
+                if (res.success && res.data) {
+                    this.data = res.data;
+                    if (!this.data.buttons) this.data.buttons = [];
+                    if (!this.data.settings) this.data.settings = {};
+                    Router.dashCached = true;
+                } else {
+                    this.data = {
+                        products: State.public.products || [],
+                        categories: State.public.categories || [],
+                        banners: State.public.banners || [],
+                        buttons: State.public.buttons || [],
+                        settings: State.public.store || {}
+                    };
+                }
+            },
+
+            toggleSelect(id, listKey) {
+                if (this.selectedIds.has(id)) this.selectedIds.delete(id);
+                else this.selectedIds.add(id);
+                this.refreshCurrentList(listKey);
+            },
+
+            toggleSelectAll(listKey) {
+                const list = this.data[listKey] || [];
+                const allSelected = list.length > 0 && list.every(item => this.selectedIds.has(item.id));
+                if (allSelected) {
+                    this.selectedIds.clear();
+                } else {
+                    list.forEach(item => this.selectedIds.add(item.id));
+                }
+                this.refreshCurrentList(listKey);
+            },
+
+            clearSelection(listKey) {
+                this.selectedIds.clear();
+                this.refreshCurrentList(listKey);
+            },
+
+            refreshCurrentList(listKey) {
+                const sub = document.getElementById('subViewContent');
+                if (!sub) return;
+                if (listKey === 'categories') this.renderCatContent(sub);
+                else if (listKey === 'buttons') this.renderBtnContent(sub);
+                else if (listKey === 'products') this.renderProdContent(sub);
+                else if (listKey === 'banners') this.renderBanContent(sub);
+            },
+
+            renderBulkBar(listKey, deleteAction) {
+                const count = this.selectedIds.size;
+                if (count === 0) return '';
+                const total = (this.data[listKey] || []).length;
+                const isAll = total > 0 && count === total;
+                return `
+                    <div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-32px)] max-w-md surface-el border border-primary/30 shadow-2xl rounded-2xl p-2.5 px-3.5 flex items-center justify-between gap-2 animate-fade-up">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="w-6 h-6 rounded-full bg-primary text-white text-xs font-extrabold flex items-center justify-center shrink-0">${count}</span>
+                            <span class="text-xs font-bold text-main truncate">Dipilih</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button type="button" onclick="Dash.toggleSelectAll('${listKey}')" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 dark:bg-gray-800 text-main hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                                ${isAll ? 'Batal Pilih' : 'Pilih Semua'}
+                            </button>
+                            <button type="button" onclick="Dash.confirmBulkDel('${deleteAction}', '${listKey}')" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-red-500 hover:bg-red-600 text-white transition-colors flex items-center gap-1 shadow-sm">
+                                <i class="ph ph-trash text-[14px]"></i> Hapus
+                            </button>
+                        </div>
+                    </div>
+                `;
+            },
+
+            clearUploadValue(inputId) {
+                const inp = document.getElementById(inputId);
+                if (inp) {
+                    inp.value = '';
+                    ImageUploader.syncPreview(inputId);
+                }
+            },
+
+            buildUploadBoxHTML(inputId, val = '', isRemovable = false, allowClear = false) {
+                const thumbVal = val ? Utils.toDriveThumbnail(val) : '';
+                const hasImg = thumbVal !== '';
+                const delBtn = isRemovable 
+                    ? `<button type="button" onclick="this.closest('.upload-row-item').remove()" class="bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-900/20 p-2 rounded-xl transition-colors shrink-0 border border-red-100 dark:border-red-900/30" title="Hapus"><i class="ph ph-trash text-[16px]"></i></button>` 
+                    : (allowClear ? `<button type="button" onclick="Dash.clearUploadValue('${inputId}')" class="bg-gray-100 text-mute hover:text-red-500 dark:bg-gray-800 p-2 rounded-xl transition-colors shrink-0 border border-gray-200 dark:border-gray-700" title="Kosongkan Gambar"><i class="ph ph-x text-[15px]"></i></button>` : '');
+                return `
+                    <div class="upload-row-item mt-1.5">
+                        <input type="hidden" id="${inputId}" value="${Utils.escapeHTML(thumbVal)}" class="fp-multi-img">
+                        <div class="flex items-center gap-3 p-2.5 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-800/30">
+                            <div class="w-12 h-12 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden shrink-0">
+                                <img id="prev-${inputId}" src="${hasImg ? Utils.sanitizeURL(thumbVal) : ''}" class="w-full h-full object-cover ${hasImg ? '' : 'hidden'}">
+                                <i id="empty-icon-${inputId}" class="ph ph-image text-[20px] text-mute ${hasImg ? 'hidden' : ''}"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <label class="bg-primary hover:bg-blue-600 text-white cursor-pointer px-3.5 py-2 rounded-xl inline-flex items-center justify-center transition-colors shadow-sm font-bold text-xs gap-1.5">
+                                    <i class="ph ph-upload-simple text-[15px]"></i> <span>Pilih Foto</span>
+                                    <input type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="hidden" onchange="ImageUploader.handleSelect(event, '${inputId}')">
+                                </label>
+                                <div id="status-${inputId}" class="hidden"></div>
+                            </div>
+                            ${delBtn}
+                        </div>
+                    </div>
+                `;
+            },
+            
+            view(id, pushState = true) {
+                if (this.currentView !== id) this.selectedIds.clear();
+                this.currentView = id; 
+                if (pushState) { 
+                    const newPath = id === 'overview' ? '/admin/dashboard' : '/admin/dashboard/' + id; 
+                    Router.safePushState(newPath, false); 
+                    Router.current = newPath; 
+                }
+                
+                const v = document.getElementById('dashViews'); if(!v) return; v.innerHTML = '';
+                const headerTitle = document.getElementById('dashHeaderTitle');
+
+                if (id === 'overview') {
+                    if(headerTitle) headerTitle.textContent = "Panel Kendali";
+                    v.innerHTML = `
+                        <div class="animate-fade-in space-y-5">
+                            <div class="bg-gradient-to-br from-primary to-blue-700 rounded-[24px] p-6 text-white shadow-lg flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                                <div>
+                                    <h2 class="text-xl font-extrabold mb-0.5">Halo, ${Utils.escapeHTML(sessionStorage.getItem('mir_admin_name') || 'Admin')}</h2>
+                                    <p class="text-white/80 text-xs">Kelola seluruh katalog dan tampilan toko.</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="Dash.formPassword()" class="px-3.5 py-2 bg-white/20 hover:bg-white/30 rounded-full text-xs font-bold backdrop-blur-md transition-colors"><i class="ph ph-key mr-1"></i> Sandi</button>
+                                    <button onclick="AdminAuth.logout()" class="px-3.5 py-2 bg-red-500 hover:bg-red-600 rounded-full text-xs font-bold transition-colors shadow"><i class="ph ph-sign-out mr-1"></i> Keluar</button>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                                <button onclick="Dash.view('products')" class="bg-white dark:bg-gray-900 aspect-square rounded-[20px] border border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center gap-2 hover-card-lift shadow-sm"><div class="w-11 h-11 bg-blue-50 dark:bg-blue-900/20 text-primary rounded-[14px] flex items-center justify-center"><i class="ph ph-package text-[22px]"></i></div><span class="text-[11px] font-bold text-main">Produk</span></button>
+                                <button onclick="Dash.view('categories')" class="bg-white dark:bg-gray-900 aspect-square rounded-[20px] border border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center gap-2 hover-card-lift shadow-sm"><div class="w-11 h-11 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 rounded-[14px] flex items-center justify-center"><i class="ph ph-tag text-[22px]"></i></div><span class="text-[11px] font-bold text-main">Kategori</span></button>
+                                <button onclick="Dash.view('buttons')" class="bg-white dark:bg-gray-900 aspect-square rounded-[20px] border border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center gap-2 hover-card-lift shadow-sm"><div class="w-11 h-11 bg-orange-50 dark:bg-orange-900/20 text-orange-500 rounded-[14px] flex items-center justify-center"><i class="ph ph-squares-four text-[22px]"></i></div><span class="text-[11px] font-bold text-main">Kelola Tombol</span></button>
+                                <button onclick="Dash.view('banners')" class="bg-white dark:bg-gray-900 aspect-square rounded-[20px] border border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center gap-2 hover-card-lift shadow-sm"><div class="w-11 h-11 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 rounded-[14px] flex items-center justify-center"><i class="ph ph-images text-[22px]"></i></div><span class="text-[11px] font-bold text-main">Banner</span></button>
+                                <button onclick="Dash.view('popup')" class="bg-white dark:bg-gray-900 aspect-square rounded-[20px] border border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center gap-2 hover-card-lift shadow-sm"><div class="w-11 h-11 bg-amber-50 dark:bg-amber-900/20 text-amber-500 rounded-[14px] flex items-center justify-center"><i class="ph ph-sparkle text-[22px]"></i></div><span class="text-[11px] font-bold text-main">Pop-up</span></button>
+                                <button onclick="Dash.view('settings')" class="bg-white dark:bg-gray-900 aspect-square rounded-[20px] border border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center gap-2 hover-card-lift shadow-sm"><div class="w-11 h-11 bg-purple-50 dark:bg-purple-900/20 text-purple-500 rounded-[14px] flex items-center justify-center"><i class="ph ph-gear text-[22px]"></i></div><span class="text-[11px] font-bold text-main">Pengaturan</span></button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const titles = { categories: 'Kategori', buttons: 'Kelola Tombol', products: 'Produk', banners: 'Banner', popup: 'Pop-up Promo', settings: 'Pengaturan' };
+                    if(headerTitle) headerTitle.textContent = titles[id] || 'Panel Kendali';
+                    v.innerHTML = `<div class="mb-4"><button onclick="Dash.view('overview')" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold surface-el border hover:border-primary transition-colors text-main shadow-sm"><i class="ph ph-arrow-left text-[15px]"></i> Kembali</button></div><div id="subViewContent" class="animate-fade-in pb-16"></div>`;
+                    
+                    const sub = document.getElementById('subViewContent');
+                    if (id === 'categories') this.renderCatContent(sub);
+                    else if (id === 'buttons') this.renderBtnContent(sub);
+                    else if (id === 'products') this.renderProdContent(sub);
+                    else if (id === 'banners') this.renderBanContent(sub);
+                    else if (id === 'popup') this.renderPopupContent(sub);
+                    else if (id === 'settings') this.renderSetContent(sub);
+                }
+            },
+
+            renderBtnContent(container) {
+                const isCardActive = (this.data.settings?.quick_buttons_status !== 'inactive');
+                const list = this.data.buttons || [];
+                container.innerHTML = `
+                    <div class="surface-el p-4 rounded-[20px] border shadow-sm mb-4 flex items-center justify-between">
+                        <div>
+                            <h3 class="font-bold text-main text-sm">Tampilkan Card Tombol</h3>
+                            <p class="text-[11px] text-mute">Aktifkan atau sembunyikan menu tombol di bawah banner</p>
+                        </div>
+                        <button onclick="Dash.toggleQuickButtonsStatus()" class="px-4 py-2 rounded-full text-xs font-bold transition-colors ${isCardActive ? 'bg-emerald-500 text-white' : 'bg-gray-200 dark:bg-gray-800 text-mute'}">
+                            ${isCardActive ? 'ON' : 'OFF'}
+                        </button>
+                    </div>
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="font-bold text-main text-sm">Daftar Tombol</h2>
+                        <button onclick="Dash.formBtn()" class="bg-primary text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-blue-600 shadow-sm">+ Tambah Tombol</button>
+                    </div>
+                    <div class="surface-el rounded-[20px] border overflow-x-auto shadow-sm">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="border-b surface-el text-mute bg-gray-50/50 dark:bg-gray-800/20">
+                                <tr><th class="p-3.5 font-semibold">Tombol</th><th class="p-3.5 font-semibold">Tujuan</th><th class="p-3.5 font-semibold">Status</th><th class="p-3.5 text-right font-semibold">Aksi</th></tr>
+                            </thead>
+                            <tbody class="divide-y surface-el">
+                                ${list.length === 0 ? `<tr><td colspan="4" class="p-6 text-center text-xs text-mute">Belum ada tombol</td></tr>` : list.map(x => {
+                                    const isSel = this.selectedIds.has(x.id);
+                                    return `
+                                    <tr onclick="Dash.toggleSelect('${x.id}', 'buttons')" class="cursor-pointer transition-colors select-none ${isSel ? 'bg-blue-50/80 dark:bg-blue-900/25' : 'hover:bg-black/5 dark:hover:bg-white/5'}">
+                                        <td class="p-3.5 font-bold text-main">
+                                            <div class="flex items-center gap-2.5">
+                                                <i class="ph ${isSel ? 'ph-check-square text-primary font-bold' : 'ph-square text-mute'} text-[18px] shrink-0"></i>
+                                                <img src="${Utils.sanitizeURL(x.image_url || Utils.placeholder)}" class="w-9 h-9 rounded-lg object-cover border shrink-0 bg-gray-50">
+                                                <span class="whitespace-pre-line leading-tight text-xs">${Utils.escapeHTML(x.name)}</span>
+                                            </div>
+                                        </td>
+                                        <td class="p-3.5 text-mute text-xs truncate max-w-[160px]">${Utils.escapeHTML(x.target_url)}</td>
+                                        <td class="p-3.5"><span class="px-2 py-0.5 ${x.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800'} text-[10px] rounded-full font-bold">${Utils.escapeHTML(x.status)}</span></td>
+                                        <td class="p-3.5 text-right" onclick="event.stopPropagation()">
+                                            <button onclick="Dash.formBtn('${x.id}')" class="text-blue-500 hover:text-blue-600 mr-1 p-1.5 rounded-lg"><i class="ph ph-pencil-simple text-[17px]"></i></button>
+                                            <button onclick="Dash.confirmDel('deleteButton','${x.id}', 'buttons')" class="text-red-500 hover:text-red-600 p-1.5 rounded-lg"><i class="ph ph-trash text-[17px]"></i></button>
+                                        </td>
+                                    </tr>`;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    ${this.renderBulkBar('buttons', 'deleteButton')}
+                `;
+            },
+
+            toggleQuickButtonsStatus() {
+                if (!this.data.settings) this.data.settings = {};
+                const nextStatus = this.data.settings.quick_buttons_status === 'inactive' ? 'active' : 'inactive';
+                this.data.settings.quick_buttons_status = nextStatus;
+                State.public.store = { ...State.public.store, ...this.data.settings, quick_buttons_status: nextStatus };
+                localStorage.setItem('mir_cache_store', JSON.stringify(State.public));
+                this.view('buttons', false);
+                Notify.show(`Menu tombol ${nextStatus === 'active' ? 'ON' : 'OFF'}`, 'success');
+                API.req('saveSettings', { quick_buttons_status: nextStatus });
+            },
+
+            limitTwoLines(el) {
+                const lines = el.value.split('\n');
+                if (lines.length > 2) {
+                    el.value = lines.slice(0, 2).join('\n');
+                }
+            },
+
+            formBtn(id = null) {
+                let d = id ? (this.data.buttons || []).find(x => x.id === id) : { name: '', image_url: '', target_url: '', status: 'active' };
+                const isCatTarget = (this.data.categories || []).some(c => c.name === d.target_url);
+                const isProdTarget = d.target_url && (d.target_url.startsWith('PRD-') || (this.data.products || []).some(p => p.id === d.target_url));
+                const initType = isProdTarget ? 'product' : (isCatTarget ? 'category' : 'custom');
+
+                Modal.open(id ? 'Ubah Tombol' : 'Tambah Tombol', `
+                    <form onsubmit="Dash.saveBtn(event, '${id||''}')" class="space-y-3.5">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1 text-mute">Teks Tombol <span class="font-normal text-[10px]">(Tekan Enter untuk 2 baris)</span></label>
+                            <textarea id="fbtn-name" rows="2" required maxlength="32" oninput="Dash.limitTwoLines(this)" placeholder="Contoh:\nTemplate\nCanva" class="w-full p-2.5 border rounded-xl bg-transparent outline-none focus:border-primary text-xs text-main leading-tight resize-none">${Utils.escapeHTML(d.name)}</textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1 text-mute">Gambar Tombol</label>
+                            ${this.buildUploadBoxHTML('fbtn-img', d.image_url, false)}
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1 text-mute">Arahkan Klik Ke</label>
+                            <select id="fbtn-type" onchange="Dash.btnChangeType()" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-main text-sm">
+                                <option value="category" ${initType === 'category' ? 'selected' : ''}>Kategori</option>
+                                <option value="product" ${initType === 'product' ? 'selected' : ''}>Produk</option>
+                                <option value="custom" ${initType === 'custom' ? 'selected' : ''}>Tautan / URL</option>
+                            </select>
+                        </div>
+                        <div id="fbtn-target-wrap">
+                            <label class="block text-xs font-semibold mb-1 text-mute" id="fbtn-target-lbl">Tujuan</label>
+                            <div id="fbtn-target-input"></div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1 text-mute">Status</label>
+                            <select id="fbtn-status" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-main text-sm">
+                                <option value="active" ${d.status === 'active' ? 'selected' : ''}>Aktif</option>
+                                <option value="inactive" ${d.status === 'inactive' ? 'selected' : ''}>Nonaktif</option>
+                            </select>
+                        </div>
+                        <div class="text-right pt-2">
+                            <button type="submit" class="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-semibold w-full sm:w-auto">Simpan</button>
+                        </div>
+                    </form>
+                `);
+                this.btnChangeType(d.target_url);
+            },
+
+            btnChangeType(initVal = null) {
+                const type = document.getElementById('fbtn-type').value;
+                const i = document.getElementById('fbtn-target-input');
+                const l = document.getElementById('fbtn-target-lbl');
+                if (type === 'custom') {
+                    l.textContent = 'Tautan URL';
+                    i.innerHTML = `<input id="fbtn-val" type="url" value="${Utils.escapeHTML(initVal && initVal.startsWith('http') ? initVal : '')}" required placeholder="https://..." class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-sm text-main">`;
+                } else if (type === 'category') {
+                    l.textContent = 'Pilih Kategori';
+                    i.innerHTML = `<select id="fbtn-val" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-sm text-main">${(this.data.categories||[]).map(c=>`<option value="${Utils.escapeHTML(c.name)}" ${initVal===c.name?'selected':''}>${Utils.escapeHTML(c.name)}</option>`).join('')}</select>`;
+                } else if (type === 'product') {
+                    l.textContent = 'Pilih Produk';
+                    i.innerHTML = `<select id="fbtn-val" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-sm text-main">${(this.data.products||[]).map(p=>`<option value="${p.id}" ${initVal===p.id?'selected':''}>${Utils.escapeHTML(p.name)}</option>`).join('')}</select>`;
+                }
+            },
+
+            async saveBtn(e, id) {
+                e.preventDefault();
+                const imgVal = document.getElementById('fbtn-img').value.trim();
+                if (!imgVal) return Notify.show('Pilih gambar tombol terlebih dahulu', 'error');
+                const rawName = document.getElementById('fbtn-name').value.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 2).join('\n');
+                if (!rawName) return Notify.show('Isi teks tombol terlebih dahulu', 'error');
+                const p = {
+                    id: id || 'BTN-' + Date.now(),
+                    name: rawName,
+                    image_url: Utils.toDriveThumbnail(imgVal),
+                    target_url: document.getElementById('fbtn-val')?.value || '',
+                    status: document.getElementById('fbtn-status').value
+                };
+                State.updateLocal('buttons', p.id, p, 'save');
+                this.data.buttons = State.public.buttons;
+                this.view('buttons', false);
+                Modal.close();
+                Notify.show('Tombol disimpan', 'success');
+                API.req('saveButton', p);
+            },
+
+            formPassword() {
+                Modal.open('Ganti Sandi', `
+                    <form onsubmit="Dash.savePassword(event)" class="space-y-3.5">
+                        <div><label class="block text-xs font-semibold mb-1 text-mute">Sandi Lama</label><input type="password" id="old-pass" required class="w-full p-2.5 border rounded-xl bg-transparent outline-none focus:border-primary text-sm text-main"></div>
+                        <div><label class="block text-xs font-semibold mb-1 text-mute">Sandi Baru</label><input type="password" id="new-pass" required minlength="6" class="w-full p-2.5 border rounded-xl bg-transparent outline-none focus:border-primary text-sm text-main"></div>
+                        <div class="text-right pt-2"><button type="submit" id="fpass-btn" class="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-600 shadow-sm w-full sm:w-auto">Simpan Sandi</button></div>
+                    </form>
+                `);
+            },
+            async savePassword(e) {
+                e.preventDefault(); const b = document.getElementById('fpass-btn'); b.disabled = true; b.innerHTML = '<i class="ph ph-spinner animate-spin text-[16px]"></i>';
+                const res = await API.req('changePassword', { old_password: document.getElementById('old-pass').value, new_password: document.getElementById('new-pass').value });
+                b.disabled = false; b.innerHTML = 'Simpan Sandi';
+                if (res.success) { Notify.show(res.message || 'Sandi diperbarui', 'success'); Modal.close(); } else Notify.show(res.message, 'error');
+            },
+
+            renderCatContent(container) {
+                const list = this.data.categories || [];
+                container.innerHTML = `
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="font-bold text-main text-sm">Daftar Kategori</h2>
+                        <button onclick="Dash.formCat()" class="bg-primary text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-blue-600 shadow-sm shrink-0">+ Kategori</button>
+                    </div>
+                    <div class="surface-el rounded-[20px] border overflow-hidden shadow-sm">
+                        <table class="w-full text-left text-sm whitespace-nowrap"><thead class="border-b surface-el text-mute bg-gray-50/50 dark:bg-gray-800/20"><tr><th class="p-3.5 font-semibold">Kategori</th><th class="p-3.5 font-semibold">Status</th><th class="p-3.5 text-right font-semibold">Aksi</th></tr></thead><tbody class="divide-y surface-el">
+                        ${list.length === 0 ? `<tr><td colspan="3" class="p-6 text-center text-xs text-mute">Belum ada kategori</td></tr>` : list.map(x => {
+                            const isSel = this.selectedIds.has(x.id);
+                            return `<tr onclick="Dash.toggleSelect('${x.id}', 'categories')" class="cursor-pointer transition-colors select-none ${isSel ? 'bg-blue-50/80 dark:bg-blue-900/25' : 'hover:bg-black/5 dark:hover:bg-white/5'}"><td class="p-3.5"><div class="flex items-center gap-2.5"><i class="ph ${isSel ? 'ph-check-square text-primary font-bold' : 'ph-square text-mute'} text-[18px] shrink-0"></i><span class="font-bold text-main">${Utils.escapeHTML(x.name)}</span></div></td><td class="p-3.5"><span class="px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-[10px] rounded-full font-bold">${Utils.escapeHTML(x.status)}</span></td><td class="p-3.5 text-right" onclick="event.stopPropagation()"><button onclick="Dash.formCat('${x.id}')" class="text-blue-500 hover:text-blue-600 mr-1 p-1.5 rounded-lg"><i class="ph ph-pencil-simple text-[17px]"></i></button><button onclick="Dash.confirmDel('deleteCategory','${x.id}', 'categories')" class="text-red-500 hover:text-red-600 p-1.5 rounded-lg"><i class="ph ph-trash text-[17px]"></i></button></td></tr>`;
+                        }).join('')}
+                        </tbody></table>
+                    </div>
+                    ${this.renderBulkBar('categories', 'deleteCategory')}`;
+            },
+            formCat(id = null) {
+                let d = id ? this.data.categories.find(x => x.id === id) : { name: '', icon: 'ph-storefront', status: 'active' };
+                Modal.open(id ? 'Ubah Kategori' : 'Tambah Kategori', `
+                    <form onsubmit="Dash.saveCat(event, '${id||''}')" class="space-y-3.5">
+                        <div><label class="block text-xs font-semibold mb-1 text-mute">Nama Kategori</label><input id="fc-name" value="${Utils.escapeHTML(d.name)}" required class="w-full p-2.5 border rounded-xl bg-transparent focus:border-primary outline-none text-sm text-main"></div>
+                        <input type="hidden" id="fc-icon" value="${Utils.escapeHTML(d.icon||'ph-storefront')}">
+                        <div><label class="block text-xs font-semibold mb-1 text-mute">Status</label><select id="fc-status" class="w-full p-2.5 border rounded-xl bg-transparent focus:border-primary outline-none text-sm text-main"><option value="active" ${d.status === 'active' ? 'selected' : ''}>Aktif</option><option value="inactive" ${d.status === 'inactive' ? 'selected' : ''}>Nonaktif</option></select></div>
+                        <div class="text-right pt-2"><button type="submit" class="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-600 shadow-sm w-full sm:w-auto">Simpan</button></div>
+                    </form>`);
+            },
+            async saveCat(e, id) { 
+                e.preventDefault();
+                const p = { id: id || 'CAT-'+Date.now(), name: document.getElementById('fc-name').value.trim(), icon: document.getElementById('fc-icon').value.trim() || 'ph-storefront', status: document.getElementById('fc-status').value };
+                State.updateLocal('categories', p.id, p, 'save'); this.data.categories = State.public.categories; this.view('categories', false); Modal.close(); Notify.show('Kategori disimpan', 'success'); API.req('saveCategory', p); 
+            },
+
+            renderProdContent(container) {
+                const list = this.data.products || [];
+                container.innerHTML = `
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2.5"><h2 class="font-bold text-main text-sm">Daftar Produk</h2><div class="flex gap-2 w-full sm:w-auto"><button onclick="Dash.modalPopular()" class="flex-1 sm:flex-none bg-amber-50 text-amber-600 dark:bg-amber-900/30 px-3.5 py-2 rounded-full text-xs font-bold hover:bg-amber-100 transition-colors border border-amber-100 dark:border-amber-800/50 flex items-center justify-center"><i class="ph ph-star text-[15px] mr-1"></i> Terlaris (Maks 5)</button><button onclick="Dash.formProd()" class="flex-1 sm:flex-none bg-primary text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-blue-600 transition-colors shadow-sm">+ Produk Baru</button></div></div>
+                    <div class="surface-el rounded-[20px] border overflow-x-auto shadow-sm"><table class="w-full text-left text-sm whitespace-nowrap"><thead class="border-b surface-el text-mute bg-gray-50/50 dark:bg-gray-800/20"><tr><th class="p-3.5 font-semibold">Produk</th><th class="p-3.5 font-semibold">Kategori</th><th class="p-3.5 font-semibold">Harga</th><th class="p-3.5 text-right font-semibold">Aksi</th></tr></thead><tbody class="divide-y surface-el">
+                    ${list.length === 0 ? `<tr><td colspan="4" class="p-6 text-center text-xs text-mute">Belum ada produk</td></tr>` : list.map(x => { 
+                        const isSel = this.selectedIds.has(x.id);
+                        const c = (this.data.categories||[]).find(z => z.id === x.category_id); 
+                        const op = (x.original_price && Number(x.original_price) > Number(x.price)) ? `<span class="line-through text-[10px] text-mute mr-1 font-medium">${Utils.formatRp(x.original_price)}</span>` : ''; 
+                        return `<tr onclick="Dash.toggleSelect('${x.id}', 'products')" class="cursor-pointer transition-colors select-none ${isSel ? 'bg-blue-50/80 dark:bg-blue-900/25' : 'hover:bg-black/5 dark:hover:bg-white/5'}"><td class="p-3.5 font-bold text-main"><div class="flex items-center gap-2.5"><i class="ph ${isSel ? 'ph-check-square text-primary font-bold' : 'ph-square text-mute'} text-[18px] shrink-0"></i><img src="${Utils.sanitizeURL((x.images&&x.images.length>0)?x.images[0]:Utils.placeholder)}" class="w-9 h-9 rounded-lg object-cover border shrink-0"><span class="truncate max-w-[180px] sm:max-w-xs">${Utils.escapeHTML(x.name)}</span></div></td><td class="p-3.5 text-mute text-xs">${Utils.escapeHTML(c ? c.name : '-')}</td><td class="p-3.5"><div class="font-extrabold text-primary text-[12.5px] flex items-center">${op} ${Utils.formatRp(x.price)}</div></td><td class="p-3.5 text-right" onclick="event.stopPropagation()"><button onclick="Dash.formProd('${x.id}')" class="text-blue-500 hover:text-blue-600 mr-1 p-1.5 rounded-lg"><i class="ph ph-pencil-simple text-[17px]"></i></button><button onclick="Dash.confirmDel('deleteProduct','${x.id}', 'products')" class="text-red-500 hover:text-red-600 p-1.5 rounded-lg"><i class="ph ph-trash text-[17px]"></i></button></td></tr>`; 
+                    }).join('')}
+                    </tbody></table></div>
+                    ${this.renderBulkBar('products', 'deleteProduct')}`;
+            },
+            modalPopular() {
+                const popCount = (this.data.products || []).filter(p => p.is_popular === true || p.is_popular === 'true').length;
+                let html = `<div class="mb-3 text-xs text-mute font-medium">Terpilih: <b>${popCount}/5</b> produk</div><div class="space-y-2.5">`;
+                (this.data.products || []).forEach(x => {
+                    const isPop = x.is_popular === true || x.is_popular === 'true';
+                    const btnClass = isPop ? 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/30' : 'bg-blue-50 text-primary border-blue-200 dark:bg-blue-900/30';
+                    const btnText = isPop ? 'Hapus' : 'Pilih';
+                    const disabledAttr = (!isPop && popCount >= 5) ? 'disabled class="ml-2 px-2.5 py-1.5 border rounded-lg text-[11px] font-bold opacity-40 cursor-not-allowed"' : `class="ml-2 px-2.5 py-1.5 border rounded-lg text-[11px] font-bold whitespace-nowrap ${btnClass}"`;
+                    html += `<div class="flex items-center justify-between p-2.5 border surface-el rounded-xl"><div class="flex items-center gap-2.5 min-w-0"><img src="${Utils.sanitizeURL((x.images&&x.images.length>0)?x.images[0]:Utils.placeholder)}" class="w-9 h-9 rounded-lg object-cover"><h4 class="text-xs font-bold truncate max-w-[160px] text-main">${Utils.escapeHTML(x.name)}</h4></div><button onclick="Dash.togglePopular('${x.id}', ${!isPop})" ${disabledAttr}>${btnText}</button></div>`;
+                });
+                html += `</div>`; Modal.open('Produk Terlaris', html);
+            },
+            togglePopular(id, is_popular) {
+                const popCount = (this.data.products || []).filter(p => p.is_popular === true || p.is_popular === 'true').length;
+                if (is_popular && popCount >= 5) return Notify.show('Maksimal 5 produk terlaris', 'error');
+                const idx = this.data.products.findIndex(x => x.id === id);
+                if(idx > -1) {
+                    this.data.products[idx].is_popular = is_popular;
+                    State.public.products = this.data.products;
+                    localStorage.setItem('mir_cache_store', JSON.stringify(State.public));
+                    this.modalPopular();
+                    API.req('togglePopular', { id, is_popular });
+                }
+            },
+
+            addProdImageInput(val = '') {
+                this.imgCounter++;
+                const wrap = document.getElementById('fp-images-wrapper');
+                const inputId = `fp-img-dyn-${Date.now()}-${this.imgCounter}`;
+                wrap.insertAdjacentHTML('beforeend', this.buildUploadBoxHTML(inputId, val, true));
+            },
+
+            toDateTimeLocal(value) {
+                if (!value) return '';
+                const d = new Date(value);
+                if (!Number.isFinite(d.getTime())) return String(value).slice(0,16);
+                const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+                return local.toISOString().slice(0,16);
+            },
+
+            formProd(id = null) {
+                let d = id ? this.data.products.find(x => x.id === id) : { name:'', category_id:'', description:'', original_price:'', price:'', promo_label:'PROMO', promo_end_at:'', demo_url:'', purchase_url:'', images:[] };
+                const catOpts = (this.data.categories||[]).map(c => `<option value="${c.id}" ${d.category_id === c.id ? 'selected' : ''}>${Utils.escapeHTML(c.name)}</option>`).join('');
+                
+                let imgHtml = '';
+                if(d.images && d.images.length > 0) {
+                    d.images.forEach((img, i) => {
+                        this.imgCounter++;
+                        const inputId = `fp-img-${i}-${this.imgCounter}`;
+                        imgHtml += this.buildUploadBoxHTML(inputId, img, i > 0);
+                    });
+                } else {
+                    this.imgCounter++;
+                    imgHtml = this.buildUploadBoxHTML(`fp-img-0-${this.imgCounter}`, '', false);
+                }
+
+                Modal.open(id ? 'Ubah Produk' : 'Tambah Produk', `
+                    <form onsubmit="Dash.saveProd(event, '${id||''}')" class="space-y-3.5">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="block text-xs font-semibold mb-1 text-mute">Nama Produk</label><input id="fp-name" value="${Utils.escapeHTML(d.name)}" required class="w-full p-2.5 border rounded-xl bg-transparent outline-none focus:border-primary text-sm text-main"></div><div><label class="block text-xs font-semibold mb-1 text-mute">Kategori</label><select id="fp-cat" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-main text-sm focus:border-primary">${catOpts}</select></div></div>
+                        <div class="grid grid-cols-2 gap-3"><div><label class="block text-xs font-semibold mb-1 text-mute">Harga Normal</label><input type="number" id="fp-oprice" value="${d.original_price||''}" class="w-full p-2.5 border rounded-xl bg-transparent outline-none focus:border-primary text-sm text-main"></div><div><label class="block text-xs font-semibold mb-1 text-mute">Harga Promo / Jual</label><input type="number" id="fp-price" value="${d.price||''}" required class="w-full p-2.5 border rounded-xl bg-transparent outline-none focus:border-primary text-sm text-main"></div></div>
+                        <div class="rounded-2xl border border-rose-100 bg-rose-50/70 p-3 dark:border-rose-900/40 dark:bg-rose-950/20"><div class="mb-2 flex items-center gap-2 text-[11px] font-extrabold text-rose-700 dark:text-rose-300"><i class="ph ph-tag text-[15px]"></i> Pengaturan Promo</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="block text-[11px] font-semibold mb-1 text-mute">Label Promo</label><input id="fp-promo-label" maxlength="18" value="${Utils.escapeHTML(d.promo_label||'PROMO')}" placeholder="PROMO" class="w-full p-2.5 border rounded-xl bg-white dark:bg-gray-900 outline-none focus:border-primary text-sm text-main"></div><div><label class="block text-[11px] font-semibold mb-1 text-mute">Tanggal & waktu berakhir</label><input type="datetime-local" id="fp-promo-end" value="${Utils.escapeHTML(this.toDateTimeLocal(d.promo_end_at))}" class="w-full p-2.5 border rounded-xl bg-white dark:bg-gray-900 outline-none focus:border-primary text-sm text-main"></div></div><p class="mt-2 text-[10px] leading-relaxed text-rose-700/80 dark:text-rose-300/80">Isi harga normal lebih tinggi dari harga promo. Setelah waktu berakhir, produk otomatis kembali menampilkan harga normal.</p></div>
+                        
+                        <div>
+                            <label class="block text-xs font-semibold mb-0.5 text-mute">Foto Produk</label>
+                            <div id="fp-images-wrapper">${imgHtml}</div>
+                            <button type="button" onclick="Dash.addProdImageInput()" class="mt-2 text-xs font-bold text-primary hover:bg-blue-50 dark:hover:bg-blue-900/30 px-2.5 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1">+ Tambah Foto</button>
+                        </div>
+
+                        <div><label class="block text-xs font-semibold mb-1 text-mute">Deskripsi</label><textarea id="fp-desc" rows="4" required class="w-full p-2.5 border rounded-xl bg-transparent outline-none focus:border-primary text-sm text-main">${Utils.escapeHTML(d.description||'')}</textarea></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="block text-xs font-semibold mb-1 text-mute">URL Demo (Opsional)</label><input type="url" id="fp-demo" value="${Utils.escapeHTML(d.demo_url||'')}" placeholder="Kosongkan jika tidak ada" class="w-full p-2.5 border rounded-xl bg-transparent outline-none focus:border-primary text-sm text-main"></div><div><label class="block text-xs font-semibold mb-1 text-mute">URL Beli (Opsional)</label><input type="url" id="fp-buy" value="${Utils.escapeHTML(d.purchase_url||'')}" placeholder="Kosongkan untuk WA" class="w-full p-2.5 border rounded-xl bg-transparent outline-none focus:border-primary text-sm text-main"></div></div>
+                        <div class="text-right pt-2"><button type="submit" class="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-600 shadow-sm w-full sm:w-auto">Simpan</button></div>
+                    </form>
+                `);
+            },
+            async saveProd(e, id) {
+                e.preventDefault(); 
+                const imgInputs = document.querySelectorAll('#fp-images-wrapper .fp-multi-img');
+                const imagesArr = [];
+                imgInputs.forEach(inp => { if(inp.value.trim()) imagesArr.push(Utils.toDriveThumbnail(inp.value.trim())); });
+                if (imagesArr.length === 0) return Notify.show('Pilih minimal 1 foto produk', 'error');
+                const normalPrice = Number(document.getElementById('fp-oprice').value || 0);
+                const salePrice = Number(document.getElementById('fp-price').value || 0);
+                const promoEndValue = document.getElementById('fp-promo-end').value;
+                if (promoEndValue && normalPrice <= salePrice) return Notify.show('Harga normal harus lebih tinggi dari harga promo.', 'error');
+                if (promoEndValue && new Date(promoEndValue).getTime() <= Date.now()) return Notify.show('Waktu berakhir promo harus di masa mendatang.', 'error');
+
+                let p = { 
+                    id: id || 'PRD-'+Date.now(), 
+                    name: document.getElementById('fp-name').value.trim(), 
+                    category_id: document.getElementById('fp-cat').value, 
+                    description: document.getElementById('fp-desc').value, 
+                    short_description: document.getElementById('fp-desc').value, 
+                    original_price: document.getElementById('fp-oprice').value, 
+                    price: document.getElementById('fp-price').value,
+                    promo_label: document.getElementById('fp-promo-label').value.trim() || 'PROMO',
+                    promo_end_at: document.getElementById('fp-promo-end').value,
+                    demo_url: document.getElementById('fp-demo').value.trim(), 
+                    purchase_url: document.getElementById('fp-buy').value.trim(), 
+                    images: imagesArr, 
+                    status: 'active', featured: true, 
+                    is_popular: id ? (this.data.products.find(x => x.id === id)?.is_popular || false) : false 
+                };
+                State.updateLocal('products', p.id, p, 'save'); this.data.products = State.public.products; this.view('products', false); Modal.close(); Notify.show('Produk disimpan', 'success'); API.req('saveProduct', p);
+            },
+
+            renderBanContent(container) {
+                const list = this.data.banners || [];
+                container.innerHTML = `
+                    <div class="flex justify-between items-center mb-4 gap-3"><h2 class="font-bold text-main text-sm">Banner Utama</h2><button onclick="Dash.formBan()" class="bg-primary text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-blue-600 shadow-sm">+ Banner Baru</button></div>
+                    ${list.length === 0 ? `<div class="surface-el rounded-[20px] border p-8 text-center text-xs text-mute">Belum ada banner</div>` : `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        ${list.map(x => {
+                            const isSel = this.selectedIds.has(x.id);
+                            return `<div onclick="Dash.toggleSelect('${x.id}', 'banners')" class="surface-el border rounded-[20px] p-3.5 shadow-sm relative cursor-pointer select-none transition-all ${isSel ? 'ring-2 ring-primary border-primary bg-blue-50/40 dark:bg-blue-900/15' : ''}"><div class="absolute top-5 left-5 z-10 w-7 h-7 rounded-lg bg-white/90 dark:bg-black/70 flex items-center justify-center shadow"><i class="ph ${isSel ? 'ph-check-square text-primary font-bold' : 'ph-square text-mute'} text-[18px]"></i></div><img src="${Utils.sanitizeURL(x.image_url)}" class="w-full aspect-[21/9] object-cover rounded-[14px] mb-2.5 border"><p class="font-bold text-xs truncate mb-1 text-main">${Utils.escapeHTML(x.title)}</p><div class="flex gap-2 mt-2.5" onclick="event.stopPropagation()"><button onclick="Dash.formBan('${x.id}')" class="flex-1 py-1.5 text-[11px] font-bold border border-blue-200 text-blue-500 rounded-lg">Ubah</button><button onclick="Dash.confirmDel('deleteBanner','${x.id}', 'banners')" class="flex-1 py-1.5 text-[11px] font-bold border border-red-200 text-red-500 rounded-lg">Hapus</button></div></div>`;
+                        }).join('')}
+                    </div>`}
+                    ${this.renderBulkBar('banners', 'deleteBanner')}`;
+            },
+            formBan(id = null) {
+                let d = id ? this.data.banners.find(x => x.id === id) : { title:'', image_url:'', target_url:'none', status:'active' };
+                Modal.open(id ? 'Ubah Banner' : 'Tambah Banner', `
+                    <form onsubmit="Dash.saveBan(event, '${id||''}')" class="space-y-3.5">
+                        <div><label class="block text-xs font-semibold mb-1 text-mute">Judul Banner</label><input id="fb-title" value="${Utils.escapeHTML(d.title)}" required class="w-full p-2.5 border rounded-xl bg-transparent outline-none focus:border-primary text-sm text-main"></div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1 text-mute">Gambar Banner</label>
+                            ${this.buildUploadBoxHTML('fb-img-url', d.image_url, false)}
+                        </div>
+                        <div><label class="block text-xs font-semibold mb-1 text-mute">Aksi Klik</label><select id="fb-type" onchange="Dash.banChangeType()" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-main text-sm"><option value="none" ${d.target_url==='none'?'selected':''}>Tanpa Aksi</option><option value="custom" ${d.target_url.startsWith('http')?'selected':''}>Buka URL</option><option value="category" ${(this.data.categories||[]).find(c=>c.name===d.target_url)?'selected':''}>Buka Kategori</option><option value="product" ${d.target_url.startsWith('PRD-')?'selected':''}>Buka Produk</option></select></div>
+                        <div id="fb-target-wrap" class="${d.target_url==='none'?'hidden':''}"><label class="block text-xs font-semibold mb-1 text-mute" id="fb-target-lbl">Tujuan</label><div id="fb-target-input"></div></div>
+                        <div class="text-right pt-2"><button type="submit" class="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-semibold w-full sm:w-auto">Simpan</button></div>
+                    </form>
+                `);
+                this.banChangeType(d.target_url);
+            },
+            banChangeType(initVal = null) {
+                const type = document.getElementById('fb-type').value; const w = document.getElementById('fb-target-wrap'); const i = document.getElementById('fb-target-input'); const l = document.getElementById('fb-target-lbl');
+                if (type === 'none') { w.classList.add('hidden'); i.innerHTML = `<input id="fb-val" type="hidden" value="none">`; } 
+                else { 
+                    w.classList.remove('hidden'); 
+                    if (type === 'custom') { l.textContent = 'Masukkan URL'; i.innerHTML = `<input id="fb-val" type="url" value="${Utils.escapeHTML(initVal&&initVal.startsWith('http')?initVal:'')}" required class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-sm text-main">`; }
+                    else if (type === 'category') { l.textContent = 'Pilih Kategori'; i.innerHTML = `<select id="fb-val" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-sm text-main">${(this.data.categories||[]).map(c=>`<option value="${c.name}" ${initVal===c.name?'selected':''}>${Utils.escapeHTML(c.name)}</option>`).join('')}</select>`; }
+                    else if (type === 'product') { l.textContent = 'Pilih Produk'; i.innerHTML = `<select id="fb-val" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-sm text-main">${(this.data.products||[]).map(p=>`<option value="${p.id}" ${initVal===p.id?'selected':''}>${Utils.escapeHTML(p.name)}</option>`).join('')}</select>`; }
+                }
+            },
+            async saveBan(e, id) {
+                e.preventDefault();
+                const imgVal = document.getElementById('fb-img-url').value.trim();
+                if (!imgVal) return Notify.show('Pilih gambar banner terlebih dahulu', 'error');
+                let p = { id: id || 'BAN-'+Date.now(), title: document.getElementById('fb-title').value.trim(), image_url: Utils.toDriveThumbnail(imgVal), target_url: document.getElementById('fb-val').value, status: 'active', subtitle: '' };
+                State.updateLocal('banners', p.id, p, 'save'); this.data.banners = State.public.banners; this.view('banners', false); Modal.close(); Notify.show('Banner tersimpan', 'success'); API.req('saveBanner', p);
+            },
+
+            renderPopupContent(container) {
+                const s = this.data.settings || {};
+                container.innerHTML = `
+                    <div class="surface-el p-5 rounded-[20px] border shadow-sm max-w-xl mx-auto">
+                        <form onsubmit="Dash.savePopup(event)" class="space-y-4">
+                            <div><label class="block text-xs font-semibold mb-1.5 text-mute">Status Pop-up</label><select id="fpop-status" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-sm text-main"><option value="active" ${s.popup_status==='active'?'selected':''}>Aktif</option><option value="inactive" ${s.popup_status!=='active'?'selected':''}>Nonaktif</option></select></div>
+                            <div>
+                                <label class="block text-xs font-semibold mb-1 text-mute">Poster Pop-up</label>
+                                ${this.buildUploadBoxHTML('fpop-url-img', s.popup_image_url || '', false, true)}
+                            </div>
+                            <div><label class="block text-xs font-semibold mb-1.5 text-mute">URL Tujuan Klik (Opsional)</label><input id="fpop-url-targ" type="url" value="${Utils.escapeHTML(s.popup_target_url||'')}" placeholder="https://" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-sm text-main"></div>
+                            <div class="flex gap-2.5 pt-2">
+                                <button type="button" onclick="Dash.testPopup()" class="bg-gray-100 dark:bg-gray-800 text-main px-4 py-2.5 rounded-xl text-xs font-bold w-1/2">Pratinjau</button>
+                                <button type="submit" class="bg-primary text-white px-4 py-2.5 rounded-xl text-xs font-bold w-1/2">Simpan</button>
+                            </div>
+                        </form>
+                    </div>`;
+            },
+            testPopup() {
+                const img = document.getElementById('fpop-url-img').value.trim();
+                if(!img) return Notify.show('Pilih gambar poster terlebih dahulu', 'error');
+                Modal.open('Pratinjau Pop-up', `<div class="flex justify-center p-2 bg-black/60 rounded-2xl"><img src="${Utils.sanitizeURL(img)}" class="max-w-full max-h-[60vh] object-contain rounded-xl"></div>`);
+            },
+            async savePopup(e) {
+                e.preventDefault();
+                const rawImg = document.getElementById('fpop-url-img').value.trim();
+                let p = { 
+                    target_url: document.getElementById('fpop-url-targ').value.trim(), 
+                    status: document.getElementById('fpop-status').value, 
+                    image_url: rawImg ? Utils.toDriveThumbnail(rawImg) : '' 
+                };
+                if (!this.data.settings) this.data.settings = {};
+                this.data.settings = {
+                    ...State.public.store,
+                    ...this.data.settings,
+                    popup_status: p.status,
+                    popup_image_url: p.image_url,
+                    popup_target_url: p.target_url
+                };
+                State.public.store = this.data.settings;
+                localStorage.setItem('mir_cache_store', JSON.stringify(State.public));
+                Notify.show('Pop-up tersimpan', 'success');
+                API.req('savePopup', p);
+            },
+
+            renderSetContent(container) {
+                const s = { ...State.public.store, ...(this.data.settings || {}) };
+                const lgLight = s.logo_light_url ? Utils.toDriveThumbnail(s.logo_light_url) : '';
+                const lgDark = s.logo_dark_url ? Utils.toDriveThumbnail(s.logo_dark_url) : '';
+                const lgApp = s.app_logo_url ? Utils.toDriveThumbnail(s.app_logo_url) : '';
+
+                container.innerHTML = `
+                    <div class="max-w-xl mx-auto space-y-5 pb-10">
+                        <form onsubmit="Dash.saveSet(event)">
+                            <div class="surface-el p-5 rounded-[20px] border shadow-sm mb-4 space-y-3.5">
+                                <h3 class="font-bold text-main text-sm flex items-center gap-2 border-b dark:border-gray-800 pb-2.5"><i class="ph ph-storefront text-[18px] text-primary"></i> Identitas Toko & WhatsApp</h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div><label class="block text-[11px] font-semibold mb-1 text-mute">Nama Toko</label><input id="fs-name" value="${Utils.escapeHTML(s.store_name||'')}" placeholder="MIR Digital Store" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-sm text-main"></div>
+                                    <div><label class="block text-[11px] font-semibold mb-1 text-mute">Tagline</label><input id="fs-tag" value="${Utils.escapeHTML(s.store_tagline||'')}" placeholder="Opsional" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-sm text-main"></div>
+                                </div>
+                                <div><label class="block text-[11px] font-semibold mb-1 text-mute">Nomor WA Order (6281...)</label><input type="text" inputmode="numeric" id="fs-wa" value="${Utils.escapeHTML(s.whatsapp_number||'')}" placeholder="628123456789" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-sm text-main"></div>
+                                <div><label class="block text-[11px] font-semibold mb-1 text-mute">Format Pesan WA ([nama_produk] & [harga])</label><textarea id="fs-wamsg" rows="2" placeholder="Opsional" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-sm text-main">${Utils.escapeHTML(s.whatsapp_message||'')}</textarea></div>
+                            </div>
+
+                            <div class="surface-el p-5 rounded-[20px] border shadow-sm mb-4 space-y-3.5">
+                                <h3 class="font-bold text-main text-sm flex items-center gap-2 border-b dark:border-gray-800 pb-2.5"><i class="ph ph-image text-[18px] text-primary"></i> Logo & Ikon Aplikasi</h3>
+                                <div>
+                                    <label class="block text-[11px] font-semibold mb-1 text-mute">Logo Toko (Mode Terang)</label>
+                                    ${this.buildUploadBoxHTML('fs-logo-light', lgLight, false, true)}
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-semibold mb-1 text-mute">Logo Toko (Mode Gelap)</label>
+                                    ${this.buildUploadBoxHTML('fs-logo-dark', lgDark, false, true)}
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-semibold mb-1 text-mute">Nama Aplikasi</label>
+                                    <input id="fs-app-name" value="${Utils.escapeHTML(s.app_name||'')}" placeholder="Opsional" class="w-full p-2.5 border rounded-xl bg-transparent outline-none text-sm text-main mb-3">
+                                    <label class="block text-[11px] font-semibold mb-1 text-mute">Ikon Aplikasi</label>
+                                    ${this.buildUploadBoxHTML('fs-app-logo', lgApp, false, true)}
+                                </div>
+                            </div>
+                            <div class="text-right"><button type="submit" class="bg-primary text-white px-6 py-3 rounded-xl text-sm font-bold w-full sm:w-auto shadow-md">Simpan Pengaturan</button></div>
+                        </form>
+                    </div>
+                `;
+            },
+            async saveSet(e) { 
+                e.preventDefault(); 
+                const rawLight = document.getElementById('fs-logo-light').value.trim();
+                const rawDark = document.getElementById('fs-logo-dark').value.trim();
+                const rawAppLogo = document.getElementById('fs-app-logo').value.trim();
+                const p = { 
+                    store_name: document.getElementById('fs-name').value.trim(), 
+                    store_tagline: document.getElementById('fs-tag').value.trim(), 
+                    whatsapp_number: document.getElementById('fs-wa').value.trim(), 
+                    whatsapp_message: document.getElementById('fs-wamsg').value,
+                    logo_light_url: rawLight ? Utils.toDriveThumbnail(rawLight) : '', 
+                    logo_dark_url: rawDark ? Utils.toDriveThumbnail(rawDark) : '', 
+                    app_name: document.getElementById('fs-app-name').value.trim(), 
+                    app_logo_url: rawAppLogo ? Utils.toDriveThumbnail(rawAppLogo, 'w512') : ''
+                };
+                this.data.settings = { ...State.public.store, ...(this.data.settings || {}), ...p };
+                State.public.store = this.data.settings;
+                localStorage.setItem('mir_cache_store', JSON.stringify(State.public));
+                PWAManager.updateManifest(this.data.settings);
+                Notify.show('Pengaturan disimpan', 'success');
+                Theme.apply(document.documentElement.classList.contains('dark'));
+                API.req('saveSettings', p);
+            },
+
+            confirmDel(action, id, localKey) {
+                Modal.open('Konfirmasi Hapus', `<div class="text-center p-3"><i class="ph ph-warning text-[48px] text-red-500 mx-auto mb-3"></i><p class="text-main mb-5 font-bold text-sm">Yakin menghapus data ini?</p><div class="flex gap-2.5 justify-center"><button onclick="Modal.close()" class="px-4 py-2.5 bg-gray-100 dark:bg-gray-800 text-main font-bold rounded-xl w-1/2 text-xs">Batal</button><button onclick="Dash.executeDel('${action}', '${id}', '${localKey}')" class="px-4 py-2.5 bg-red-500 text-white font-bold rounded-xl w-1/2 text-xs">Hapus</button></div></div>`);
+            },
+            async executeDel(action, id, localKey) { 
+                this.selectedIds.delete(id);
+                State.updateLocal(localKey, id, null, 'delete'); this.data[localKey] = State.public[localKey];
+                this.view(localKey, false); Modal.close(); Notify.show('Data dihapus', 'success'); API.req(action, { id }); 
+            },
+
+            confirmBulkDel(action, localKey) {
+                const count = this.selectedIds.size;
+                if (count === 0) return;
+                Modal.open('Konfirmasi Hapus Massal', `<div class="text-center p-3"><i class="ph ph-warning text-[48px] text-red-500 mx-auto mb-3"></i><p class="text-main mb-5 font-bold text-sm">Yakin menghapus ${count} data yang dipilih?</p><div class="flex gap-2.5 justify-center"><button onclick="Modal.close()" class="px-4 py-2.5 bg-gray-100 dark:bg-gray-800 text-main font-bold rounded-xl w-1/2 text-xs">Batal</button><button onclick="Dash.executeBulkDel('${action}', '${localKey}')" class="px-4 py-2.5 bg-red-500 text-white font-bold rounded-xl w-1/2 text-xs">Hapus (${count})</button></div></div>`);
+            },
+            async executeBulkDel(action, localKey) {
+                const ids = Array.from(this.selectedIds);
+                if (ids.length === 0) return;
+                this.selectedIds.clear();
+                State.updateLocal(localKey, ids, null, 'deleteBatch');
+                this.data[localKey] = State.public[localKey];
+                this.view(localKey, false);
+                Modal.close();
+                Notify.show(`${ids.length} data dihapus`, 'success');
+                API.req('deleteBatch', { sheetKey: localKey, ids: ids });
+            }
+        };
+
+        window.addEventListener('popstate', () => Router.load());
+        window.addEventListener('DOMContentLoaded', () => { 
+            PWAManager.init(); Theme.init(); Router.load(); PublicUI.startPromoClock();
+            document.addEventListener('click', (e) => { const wrap = document.getElementById('searchWrap'); const dd = document.getElementById('searchDropdown'); if(wrap && dd && !wrap.contains(e.target)) { dd.classList.add('hidden'); dd.classList.remove('flex'); } });
+            document.addEventListener('contextmenu', (e) => { if (e.target && e.target.tagName === 'IMG') e.preventDefault(); });
+            document.addEventListener('dragstart', (e) => { if (e.target && e.target.tagName === 'IMG') e.preventDefault(); });
+        });
+    </script>
+</body>
+</html>
